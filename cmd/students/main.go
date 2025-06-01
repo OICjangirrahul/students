@@ -12,6 +12,7 @@ import (
 
 	"github.com/OICjangirrahul/students/internal/config"
 	"github.com/OICjangirrahul/students/internal/http/handlers/student"
+	"github.com/OICjangirrahul/students/internal/storage/sqlite"
 )
 
 
@@ -20,10 +21,17 @@ func main() {
 	//load config
 	cfg := config.MustLoad()
 
+	storage, err := sqlite.New(cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	slog.Info("storage initialized")
+
 	//setup router
 	router := http.NewServeMux()
 
-	router.HandleFunc("POST /api/students", student.New())
+	router.HandleFunc("POST /api/students", student.New(storage))
 
 
 	server := http.Server{
