@@ -1,4 +1,9 @@
 env: "dev"
-storage_path: "storage/storage.db"
+storage_path: "./data/students.db"
+
 http_server:
-  address: "localhost:8082"
+  address: ":8082"
+  shutdown_timeout: 10s
+
+jwt:
+  secret: "naruto"

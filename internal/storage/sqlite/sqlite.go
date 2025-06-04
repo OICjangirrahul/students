@@ -2,6 +2,7 @@ package sqlite
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 	"time"
 
@@ -37,6 +38,7 @@ func NewSqlite(cfg *config.Config) (*Sqlite, error) {
 	}
 	return &Sqlite{
 		Db: db,
+		Cfg: cfg,
 	}, nil
 
 }
@@ -86,39 +88,47 @@ func (s *Sqlite) GetStudentById(id int64) (types.Student, error) {
 	return student, err
 
 }
-
 func (s *Sqlite) LoginStudent(email, password string) (string, error) {
-	stmt, err := s.Db.Prepare("SELECT id, password FROM students WHERE email = ? LIMIT 1")
-	if err != nil {
-		return "", fmt.Errorf("failed to prepare statement: %w", err)
-	}
-	defer stmt.Close()
+    // Check for nil database
+    if s == nil || s.Db == nil {
+        return "", errors.New("database not initialized")
+    }
 
-	var studentId int64
-	var hashedPassword string
-	err = stmt.QueryRow(email).Scan(&studentId, &hashedPassword)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			return "", fmt.Errorf("no student found with email: %s", email)
-		}
-		return "", fmt.Errorf("query error: %w", err)
-	}
+    // Prepare SQL statement
+    stmt, err := s.Db.Prepare("SELECT id, password FROM students WHERE email = ? LIMIT 1")
+    if err != nil {
+        return "", fmt.Errorf("failed to prepare statement: %w", err)
+    }
 
-	if err := bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(password)); err != nil {
-		return "", fmt.Errorf("invalid credentials: %w", err)
-	}
+    defer stmt.Close()
 
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"sub":   studentId,
-		"email": email,
-		"exp":   time.Now().Add(24 * time.Hour).Unix(), // Hardcoded 24-hour expiration
-		"iat":   time.Now().Unix(),
-	})
+    // Query and scan results
+    var studentId int64
+    var hashedPassword string
+		fmt.Println("e......")
+    err = stmt.QueryRow(email).Scan(&studentId, &hashedPassword)
+    if err != nil {
+        if err == sql.ErrNoRows {
+            return "", fmt.Errorf("no student found with email: %s", email)
+        }
+        return "", fmt.Errorf("query error: %w", err)
+    }
+    // Verify password with bcrypt
+    if err := bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(password)); err != nil {
+        return "", fmt.Errorf("invalid credentials: %w", err)
+    }
+    // Generate JWT token
+    token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+        "sub":   studentId,
+        "email": email,
+        "exp":   time.Now().Add(24 * time.Hour).Unix(),
+        "iat":   time.Now().Unix(),
+    })
 
-	tokenString, err := token.SignedString([]byte(s.Cfg.JWT.Secret))
-	if err != nil {
-		return "", fmt.Errorf("failed to generate JWT: %w", err)
-	}
+    tokenString, err := token.SignedString([]byte(s.Cfg.JWT.Secret))
+    if err != nil {
+        return "", fmt.Errorf("failed to generate JWT: %w", err)
+    }
 
-	return tokenString, nil
+    return tokenString, nil
 }

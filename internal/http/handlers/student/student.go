@@ -79,40 +79,48 @@ func GetById(storage storage.Storage) http.HandlerFunc {
 	}
 }
 
-// func Login(storage storage.Storage) http.HandlerFunc {
-// 	return func(w http.ResponseWriter, r *http.Request) {
-// 		slog.Info("logging in a student")
+func Login(storage storage.Storage) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		slog.Info("logging in a student")
+		if storage == nil {
+            http.Error(w, "Internal server error: storage not initialized", http.StatusInternalServerError)
+            return
+        }
 
-// 		var loginReq struct {
-// 			Email    string `json:"email" validate:"required,email"`
-// 			Password string `json:"password" validate:"required"`
-// 		}
+		var student types.StudentLogin
 
-// 		err := json.NewDecoder(r.Body).Decode(&loginReq)
-// 		if errors.Is(err, io.EOF) {
-// 			response.WriteJson(w, http.StatusBadRequest, response.GeneralError(fmt.Errorf("empty body")))
-// 			return
-// 		}
+		err := json.NewDecoder(r.Body).Decode(&student)
+		//if body is empty
+		if errors.Is(err, io.EOF) {
+			// response.WriteJson(w,http.StatusBadRequest, response.GeneralError(err))
 
-// 		if err != nil {
-// 			response.WriteJson(w, http.StatusBadRequest, response.GeneralError(err))
-// 			return
-// 		}
+			//custom error message using fmt
+			response.WriteJson(w, http.StatusBadRequest, response.GeneralError(fmt.Errorf("empty body")))
+			return
+		}
 
-// 		if err := validator.New().Struct(loginReq); err != nil {
-// 			validateErrs := err.(validator.ValidationErrors)
-// 			response.WriteJson(w, http.StatusBadRequest, response.ValidationError(validateErrs))
-// 			return
-// 		}
+		if err != nil {
+			response.WriteJson(w, http.StatusBadRequest, response.GeneralError(err))
+			return
+		}
+		//convert string into byte
+		// w.Write([]byte("Welcome to students api"))
 
-// 		token, err := storage.LoginStudent(loginReq.Email, loginReq.Password)
-// 		if err != nil {
-// 			slog.Error("error logging in", slog.String("email", loginReq.Email), slog.String("error", err.Error()))
-// 			response.WriteJson(w, http.StatusUnauthorized, response.GeneralError(fmt.Errorf("invalid credentials")))
-// 			return
-// 		}
+		if err := validator.New().Struct(student); err != nil {
+			//type change err to => validateErrors
+			validateErrs := err.(validator.ValidationErrors)
+			response.WriteJson(w, http.StatusBadRequest, response.ValidationError(validateErrs))
+			return
+		}
 
-// 		slog.Info("user logged in successfully", slog.String("email", loginReq.Email))
-// 		response.WriteJson(w, http.StatusOK, map[string]string{"token": token})
-// 	}
-// }
+		token, err := storage.LoginStudent(student.Email, student.Password)
+		if err != nil {
+			slog.Error("error logging in", slog.String("email", student.Email), slog.String("error", err.Error()))
+			response.WriteJson(w, http.StatusUnauthorized, response.GeneralError(fmt.Errorf("invalid credentials")))
+			return
+		}
+
+		slog.Info("user logged in successfully", slog.String("email", student.Email))
+		response.WriteJson(w, http.StatusOK, map[string]string{"token": token})
+	}
+}
