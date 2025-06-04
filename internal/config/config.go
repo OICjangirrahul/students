@@ -15,11 +15,19 @@ type HTTPServer struct {
 	ShutdownTimeout time.Duration `yaml:"shutdown_timeout"`
 }
 
+type DBConfig struct {
+	Host     string `yaml:"host" env:"DB_HOST" env-required:"true"`
+	Port     string `yaml:"port" env:"DB_PORT" env-required:"true"`
+	User     string `yaml:"user" env:"DB_USER" env-required:"true"`
+	Password string `yaml:"password" env:"DB_PASSWORD" env-required:"true"`
+	Name     string `yaml:"name" env:"DB_NAME" env-required:"true"`
+}
+
 type Config struct {
-	Env         string     `yaml:"env" env:"ENV" env-required:"true"`
-	StoragePath string     `yaml:"storage_path" env-required:"true"`
-	HTTPServer  HTTPServer `yaml:"http_server"`
-	JWT         JWTConfig  `yaml:"jwt"`
+	Env        string     `yaml:"env" env:"ENV" env-required:"true"`
+	DB         DBConfig   `yaml:"db"`
+	HTTPServer HTTPServer `yaml:"http_server"`
+	JWT        JWTConfig  `yaml:"jwt"`
 }
 
 type JWTConfig struct {

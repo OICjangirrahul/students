@@ -16,16 +16,27 @@ import (
 func main() {
 	cfg := config.MustLoad()
 
-	handler, err := internal.InitializeStudentHandler(cfg)
+	handlers, err := internal.InitializeHandlers(cfg)
 	if err != nil {
-		slog.Error("failed to initialize handler", slog.String("error", err.Error()))
+		slog.Error("failed to initialize handlers", slog.String("error", err.Error()))
 		os.Exit(1)
 	}
 
 	mux := http.NewServeMux()
-	mux.HandleFunc("POST /students", handler.Create())
-	mux.HandleFunc("GET /students/{id}", handler.GetByID())
-	mux.HandleFunc("POST /students/login", handler.Login())
+
+	// Student routes
+	mux.HandleFunc("POST /students", handlers.Student.Create())
+	mux.HandleFunc("GET /students/{id}", handlers.Student.GetByID())
+	mux.HandleFunc("POST /students/login", handlers.Student.Login())
+
+	// Teacher routes
+	mux.HandleFunc("POST /teachers", handlers.Teacher.Create())
+	mux.HandleFunc("GET /teachers/{id}", handlers.Teacher.GetByID())
+	mux.HandleFunc("PUT /teachers/{id}", handlers.Teacher.Update())
+	mux.HandleFunc("DELETE /teachers/{id}", handlers.Teacher.Delete())
+	mux.HandleFunc("POST /teachers/login", handlers.Teacher.Login())
+	mux.HandleFunc("POST /teachers/{teacherId}/students/{studentId}", handlers.Teacher.AssignStudent())
+	mux.HandleFunc("GET /teachers/{teacherId}/students", handlers.Teacher.GetStudents())
 
 	srv := &http.Server{
 		Addr:    cfg.HTTPServer.Addr,

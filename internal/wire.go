@@ -12,16 +12,35 @@ import (
 	"github.com/google/wire"
 )
 
-var repositorySet = wire.NewSet(
-	repositories.NewSQLiteRepository,
-	wire.Bind(new(ports.StudentRepository), new(*repositories.SQLiteRepository)),
+var dbSet = wire.NewSet(
+	repositories.NewDB,
 )
 
-func InitializeStudentHandler(cfg *config.Config) (*http.StudentHandler, error) {
+var studentRepositorySet = wire.NewSet(
+	repositories.NewStudentRepository,
+	wire.Bind(new(ports.StudentRepository), new(*repositories.StudentRepository)),
+)
+
+var teacherRepositorySet = wire.NewSet(
+	repositories.NewTeacherRepository,
+	wire.Bind(new(ports.TeacherRepository), new(*repositories.TeacherRepository)),
+)
+
+type Handlers struct {
+	Student *http.StudentHandler
+	Teacher *http.TeacherHandler
+}
+
+func InitializeHandlers(cfg *config.Config) (*Handlers, error) {
 	wire.Build(
-		repositorySet,
+		dbSet,
+		studentRepositorySet,
+		teacherRepositorySet,
 		services.NewStudentService,
+		services.NewTeacherService,
 		http.NewStudentHandler,
+		http.NewTeacherHandler,
+		wire.Struct(new(Handlers), "*"),
 	)
 	return nil, nil
 }
