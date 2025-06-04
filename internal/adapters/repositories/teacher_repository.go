@@ -24,7 +24,7 @@ type TeacherModel struct {
 	Subject   string    `gorm:"not null"`
 	CreatedAt time.Time `gorm:"autoCreateTime"`
 	UpdatedAt time.Time `gorm:"autoUpdateTime"`
-	Students  []Student `gorm:"many2many:teacher_students;"`
+	Students  []StudentModel `gorm:"many2many:teacher_students;"`
 }
 
 func NewTeacherRepository(db *gorm.DB, cfg *config.Config) *TeacherRepository {
@@ -40,7 +40,7 @@ func (r *TeacherRepository) CreateTeacher(name, email, password, subject string)
 		return 0, fmt.Errorf("failed to hash password: %w", err)
 	}
 
-	teacher := Teacher{
+	teacher := TeacherModel{
 		Name:     name,
 		Email:    email,
 		Password: string(hashedPassword),
@@ -56,7 +56,7 @@ func (r *TeacherRepository) CreateTeacher(name, email, password, subject string)
 }
 
 func (r *TeacherRepository) GetTeacherByID(id int64) (domain.Teacher, error) {
-	var teacher Teacher
+	var teacher TeacherModel
 	result := r.db.Preload("Students").First(&teacher, id)
 	if result.Error != nil {
 		if result.Error == gorm.ErrRecordNotFound {
@@ -85,7 +85,7 @@ func (r *TeacherRepository) GetTeacherByID(id int64) (domain.Teacher, error) {
 }
 
 func (r *TeacherRepository) UpdateTeacher(id int64, name, subject string) error {
-	result := r.db.Model(&Teacher{}).Where("id = ?", id).Updates(map[string]interface{}{
+	result := r.db.Model(&TeacherModel{}).Where("id = ?", id).Updates(map[string]interface{}{
 		"name":    name,
 		"subject": subject,
 	})
@@ -102,7 +102,7 @@ func (r *TeacherRepository) UpdateTeacher(id int64, name, subject string) error 
 }
 
 func (r *TeacherRepository) DeleteTeacher(id int64) error {
-	result := r.db.Delete(&Teacher{}, id)
+	result := r.db.Delete(&TeacherModel{}, id)
 	if result.Error != nil {
 		return fmt.Errorf("failed to delete teacher: %w", result.Error)
 	}
@@ -115,7 +115,7 @@ func (r *TeacherRepository) DeleteTeacher(id int64) error {
 }
 
 func (r *TeacherRepository) LoginTeacher(email, password string) (string, error) {
-	var teacher Teacher
+	var teacher TeacherModel
 	result := r.db.Where("email = ?", email).First(&teacher)
 	if result.Error != nil {
 		if result.Error == gorm.ErrRecordNotFound {
@@ -154,7 +154,7 @@ func (r *TeacherRepository) AssignStudentToTeacher(teacherID, studentID int64) e
 }
 
 func (r *TeacherRepository) GetTeacherStudents(teacherID int64) ([]domain.Student, error) {
-	var teacher Teacher
+	var teacher TeacherModel
 	result := r.db.Preload("Students").First(&teacher, teacherID)
 	if result.Error != nil {
 		return nil, fmt.Errorf("failed to get teacher: %w", result.Error)

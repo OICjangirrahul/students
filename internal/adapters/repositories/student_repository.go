@@ -24,7 +24,7 @@ type StudentModel struct {
 	Password  string    `gorm:"not null"`
 	CreatedAt time.Time `gorm:"autoCreateTime"`
 	UpdatedAt time.Time `gorm:"autoUpdateTime"`
-	Teachers  []Teacher `gorm:"many2many:teacher_students;"`
+	Teachers  []TeacherModel `gorm:"many2many:teacher_students;"`
 }
 
 func NewStudentRepository(db *gorm.DB, cfg *config.Config) *StudentRepository {
@@ -40,7 +40,7 @@ func (r *StudentRepository) CreateStudent(name, email string, age int, password 
 		return 0, fmt.Errorf("failed to hash password: %w", err)
 	}
 
-	student := Student{
+	student := StudentModel{
 		Name:     name,
 		Email:    email,
 		Age:      age,
@@ -56,7 +56,7 @@ func (r *StudentRepository) CreateStudent(name, email string, age int, password 
 }
 
 func (r *StudentRepository) GetStudentByID(id int64) (domain.Student, error) {
-	var student Student
+	var student StudentModel
 	result := r.db.First(&student, id)
 	if result.Error != nil {
 		if result.Error == gorm.ErrRecordNotFound {
@@ -74,7 +74,7 @@ func (r *StudentRepository) GetStudentByID(id int64) (domain.Student, error) {
 }
 
 func (r *StudentRepository) LoginStudent(email, password string) (string, error) {
-	var student Student
+	var student StudentModel
 	result := r.db.Where("email = ?", email).First(&student)
 	if result.Error != nil {
 		if result.Error == gorm.ErrRecordNotFound {
