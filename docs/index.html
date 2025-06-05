@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>システム設計ドキュメント</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10.6.1/dist/mermaid.min.js"></script>
+</head>
+<body>
+    <div class="sidebar">
+        <nav>
+            <ul>
+                <li><a href="#architecture">システム構成図</a></li>
+                <li><a href="#er-diagram">ER図</a></li>
+                <li><a href="#flowcharts">APIフローチャート</a></li>
+                <li><a href="#functional-spec">機能仕様書</a></li>
+                <li><a href="#technical-spec">技術仕様書</a></li>
+                <li><a href="#operation-manual">運用手順書</a></li>
+            </ul>
+        </nav>
+    </div>
+
+    <main class="content">
+        <h1>システム設計ドキュメント</h1>
+
+        <section id="architecture">
+            <h2>システム構成図</h2>
+            <div class="mermaid">
+graph TB
+    subgraph "Frontend"
+        Client["Client Application"]
+    end
+
+    subgraph "Backend Services"
+        API["API Server<br/>(Gin Framework)"]
+        subgraph "Core Domain"
+            DM["Domain Models"]
+            Ports["Ports/Interfaces"]
+            Students["Student Management"]
+            Teachers["Teacher Management"]
+        end
+        subgraph "Adapters"
+            S3A["S3 Adapter"]
+            DynamoA["DynamoDB Adapter"]
+        end
+    end
+
+    subgraph "AWS Cloud"
+        S3["Amazon S3<br/>File Storage"]
+        DynamoDB["Amazon DynamoDB<br/>Document Storage"]
+    end
+
+    Client --> API
+    API --> DM
+    DM --> Ports
+    Ports --> S3A
+    Ports --> DynamoA
+    S3A --> S3
+    DynamoA --> DynamoDB
+            </div>
+        </section>
+
+        <section id="er-diagram">
+            <h2>ER図</h2>
+            <div class="mermaid">
+erDiagram
+    File {
+        string ID
+        string Name
+        int Size
+        string ContentType
+        string URL
+        timestamp CreatedAt
+        timestamp UpdatedAt
+    }
+    
+    Document {
+        string ID
+        string Type
+        json Data
+        timestamp CreatedAt
+        timestamp UpdatedAt
+    }
+
+    Student {
+        string ID
+        string Name
+        string Email
+        string Grade
+        timestamp CreatedAt
+        timestamp UpdatedAt
+    }
+
+    Teacher {
+        string ID
+        string Name
+        string Email
+        string Subject
+        timestamp CreatedAt
+        timestamp UpdatedAt
+    }
+
+    Teacher ||--o{ Student : teaches
+    File ||--o{ Document : "references"
+            </div>
+        </section>
+
+        <section id="flowcharts">
+            <h2>APIフローチャート</h2>
+            
+            <h3>認証フロー</h3>
+            <div class="mermaid">
+flowchart TD
+    Start["開始"] --> InputCreds["認証情報入力<br/>(email, password)"]
+    InputCreds --> LoginType{"ログインタイプ"}
+    LoginType -->|学生| StudentLogin["学生ログイン<br/>/api/v1/students/login"]
+    LoginType -->|教師| TeacherLogin["教師ログイン<br/>/api/v1/teachers/login"]
+    
+    StudentLogin --> ValidateS{"認証情報検証"}
+    TeacherLogin --> ValidateT{"認証情報検証"}
+    
+    ValidateS -->|失敗| ErrorS["エラーレスポンス<br/>401 Unauthorized"]
+    ValidateS -->|成功| TokenS["JWTトークン生成"]
+    ValidateT -->|失敗| ErrorT["エラーレスポンス<br/>401 Unauthorized"]
+    ValidateT -->|成功| TokenT["JWTトークン生成"]
+    
+    TokenS --> ReturnS["トークン返却<br/>200 OK"]
+    TokenT --> ReturnT["トークン返却<br/>200 OK"]
+    
+    ErrorS --> End["終了"]
+    ErrorT --> End
+    ReturnS --> End
+    ReturnT --> End
+            </div>
+
+            <h3>学生API フロー</h3>
+            <div class="mermaid">
+flowchart TD
+    Start["開始"] --> Auth{"認証確認"}
+    Auth -->|未認証| Error401["401 Unauthorized"]
+    Auth -->|認証済| Operation{"操作タイプ"}
+    
+    Operation -->|登録| Create["学生登録<br/>POST /api/v1/students"]
+    Create --> ValidateC{"入力検証"}
+    ValidateC -->|失敗| Error400C["400 Bad Request"]
+    ValidateC -->|成功| SaveDB["データベース保存"]
+    SaveDB -->|失敗| Error500["500 Server Error"]
+    SaveDB -->|成功| Return201["201 Created"]
+    
+    Operation -->|取得| Get["学生情報取得<br/>GET /api/v1/students/:id"]
+    Get --> FindDB{"DB検索"}
+    FindDB -->|見つからない| Error404["404 Not Found"]
+    FindDB -->|見つかった| Return200["200 OK"]
+    
+    Error401 --> End["終了"]
+    Error400C --> End
+    Error500 --> End
+    Error404 --> End
+    Return201 --> End
+    Return200 --> End
+            </div>
+
+            <h3>教師API フロー</h3>
+            <div class="mermaid">
+flowchart TD
+    Start["開始"] --> Auth{"認証確認"}
+    Auth -->|未認証| Error401["401 Unauthorized"]
+    Auth -->|認証済| Operation{"操作タイプ"}
+    
+    Operation -->|登録| Create["教師登録<br/>POST /api/v1/teachers"]
+    Create --> ValidateC{"入力検証"}
+    ValidateC -->|失敗| Error400C["400 Bad Request"]
+    ValidateC -->|成功| SaveDB["データベース保存"]
+    SaveDB -->|失敗| Error500["500 Server Error"]
+    SaveDB -->|成功| Return201["201 Created"]
+    
+    Operation -->|更新| Update["教師情報更新<br/>PUT /api/v1/teachers/:id"]
+    Update --> ValidateU{"入力検証"}
+    ValidateU -->|失敗| Error400U["400 Bad Request"]
+    ValidateU -->|成功| UpdateDB["データベース更新"]
+    UpdateDB -->|失敗| Error404U["404 Not Found"]
+    UpdateDB -->|成功| Return200U["200 OK"]
+    
+    Operation -->|削除| Delete["教師削除<br/>DELETE /api/v1/teachers/:id"]
+    Delete --> CheckExists{"存在確認"}
+    CheckExists -->|存在しない| Error404D["404 Not Found"]
+    CheckExists -->|存在する| DeleteDB["データベース削除"]
+    DeleteDB -->|成功| Return204["204 No Content"]
+    
+    Operation -->|学生割当| Assign["学生割当<br/>POST /api/v1/teachers/:id/students/:studentId"]
+    Assign --> ValidateA{"割当検証"}
+    ValidateA -->|失敗| Error400A["400 Bad Request"]
+    ValidateA -->|成功| AssignDB["割当保存"]
+    AssignDB -->|失敗| Error404A["404 Not Found"]
+    AssignDB -->|成功| Return200A["200 OK"]
+    
+    Error401 --> End["終了"]
+    Error400C --> End
+    Error500 --> End
+    Error404U --> End
+    Return201 --> End
+    Return200U --> End
+    Return204 --> End
+    Error404A --> End
+    Return200A --> End
+            </div>
+
+            <h3>データモデル関連図</h3>
+            <div class="mermaid">
+erDiagram
+    Teacher ||--o{ TeacherStudent : "assigns"
+    Teacher {
+        int id
+        string name
+        string email
+        string password_hash
+        string subject
+        timestamp created_at
+        timestamp updated_at
+    }
+    
+    Student ||--o{ TeacherStudent : "assigned_to"
+    Student {
+        int id
+        string name
+        string email
+        string password_hash
+        timestamp created_at
+        timestamp updated_at
+    }
+    
+    TeacherStudent {
+        int teacher_id
+        int student_id
+        timestamp assigned_at
+    }
+
+    Teacher ||--o{ Subject : "teaches"
+    Subject {
+        int id
+        string name
+        string description
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    Student ||--o{ Grade : "receives"
+    Grade {
+        int id
+        int student_id
+        int subject_id
+        float score
+        string comment
+        timestamp graded_at
+    }
+
+    Subject ||--o{ Grade : "has"
+            </div>
+        </section>
+
+        <section id="functional-spec">
+            <h2>機能仕様書</h2>
+            <h3>1. システム概要</h3>
+            <p>本システムは、ファイルストレージとドキュメントストレージの機能を提供するRESTful APIサービスです。</p>
+
+            <h4>1.1 主要コンポーネント</h4>
+            <ul>
+                <li>APIサーバー (Gin Framework)</li>
+                <li>ファイルストレージ (Amazon S3)</li>
+                <li>ドキュメントストレージ (Amazon DynamoDB)</li>
+            </ul>
+
+            <h3>2. 機能一覧</h3>
+            <h4>2.1 ファイル管理機能</h4>
+            <ul>
+                <li>ファイルアップロード</li>
+                <li>ファイルダウンロード</li>
+                <li>ファイル削除</li>
+                <li>ファイル一覧取得</li>
+                <li>ファイル情報取得</li>
+            </ul>
+
+            <h4>2.2 ドキュメント管理機能</h4>
+            <ul>
+                <li>ドキュメント作成</li>
+                <li>ドキュメント取得</li>
+                <li>ドキュメント更新</li>
+                <li>ドキュメント削除</li>
+                <li>ドキュメント一覧取得</li>
+            </ul>
+
+            <h4>2.3 学生管理機能</h4>
+            <ul>
+                <li>学生登録</li>
+                <li>学生情報取得</li>
+                <li>学生情報更新</li>
+                <li>学生削除</li>
+                <li>学生一覧取得</li>
+                <li>学生の成績管理</li>
+            </ul>
+
+            <h4>2.4 教師管理機能</h4>
+            <ul>
+                <li>教師登録</li>
+                <li>教師情報取得</li>
+                <li>教師情報更新</li>
+                <li>教師削除</li>
+                <li>教師一覧取得</li>
+                <li>担当クラス管理</li>
+            </ul>
+        </section>
+
+        <section id="technical-spec">
+            <h2>技術仕様書</h2>
+            <h3>1. アーキテクチャ</h3>
+            <p>ヘキサゴナルアーキテクチャを採用し、以下の層に分離：</p>
+            <ul>
+                <li>ドメイン層</li>
+                <li>ポート層</li>
+                <li>アダプター層</li>
+            </ul>
+
+            <h3>2. 使用技術</h3>
+            <ul>
+                <li>言語: Go</li>
+                <li>Webフレームワーク: Gin</li>
+                <li>クラウドサービス: AWS (S3, DynamoDB)</li>
+                <li>SDKバージョン: AWS SDK v2</li>
+            </ul>
+
+            <h3>3. API仕様</h3>
+            
+            <h4>3.1 認証API</h4>
+            <pre><code>
+POST   /api/v1/students/login    - 学生ログイン
+  リクエストボディ:
+    {
+      "email": "string",     // メールアドレス
+      "password": "string"   // パスワード
+    }
+
+POST   /api/v1/teachers/login    - 教師ログイン
+  リクエストボディ:
+    {
+      "email": "string",     // メールアドレス
+      "password": "string"   // パスワード
+    }
+            </code></pre>
+
+            <h4>3.2 学生API</h4>
+            <pre><code>
+POST   /api/v1/students          - 学生登録
+  リクエストボディ:
+    {
+      "name": "string",      // 氏名
+      "email": "string",     // メールアドレス
+      "password": "string"   // パスワード
+    }
+
+GET    /api/v1/students/:id      - 学生情報取得
+  パラメータ:
+    - id: 学生ID (整数)
+
+レスポンス形式:
+{
+    "success": true,
+    "data": {
+        "id": 1,
+        "name": "山田太郎",
+        "email": "yamada@example.com",
+        "created_at": "2024-06-05T10:00:00Z",
+        "updated_at": "2024-06-05T10:00:00Z"
+    }
+}
+            </code></pre>
+
+            <h4>3.3 教師API</h4>
+            <pre><code>
+POST   /api/v1/teachers                          - 教師登録
+  リクエストボディ:
+    {
+      "name": "string",      // 氏名
+      "email": "string",     // メールアドレス
+      "password": "string",  // パスワード
+      "subject": "string"    // 担当科目
+    }
+
+GET    /api/v1/teachers/:id                      - 教師情報取得
+PUT    /api/v1/teachers/:id                      - 教師情報更新
+DELETE /api/v1/teachers/:id                      - 教師削除
+
+POST   /api/v1/teachers/:id/students/:studentId  - 学生の割り当て
+GET    /api/v1/teachers/:id/students             - 担当学生一覧取得
+
+レスポンス形式:
+{
+    "success": true,
+    "data": {
+        "id": 1,
+        "name": "鈴木先生",
+        "email": "suzuki@example.com",
+        "subject": "数学",
+        "created_at": "2024-06-05T10:00:00Z",
+        "updated_at": "2024-06-05T10:00:00Z"
+    }
+}
+            </code></pre>
+
+            <h4>3.4 共通仕様</h4>
+            <pre><code>
+認証:
+- ログイン以外のすべてのエンドポイントには認証が必要
+- リクエストヘッダーに Bearer トークンを含める必要がある
+  Authorization: Bearer &lt;token&gt;
+
+エラーレスポンス:
+{
+    "success": false,
+    "error": {
+        "message": "エラーメッセージ"
+    }
+}
+
+ステータスコード:
+- 200: 成功
+- 201: 作成成功
+- 204: 削除成功
+- 400: リクエスト不正
+- 401: 認証エラー
+- 404: リソースが見つからない
+- 500: サーバーエラー
+            </code></pre>
+        </section>
+
+        <section id="operation-manual">
+            <h2>運用手順書</h2>
+            <h3>1. 環境設定</h3>
+            <h4>1.1 必要な環境変数</h4>
+            <pre><code>
+AWS_REGION=<AWSリージョン>
+AWS_ACCESS_KEY_ID=<AWSアクセスキー>
+AWS_SECRET_ACCESS_KEY=<AWSシークレットキー>
+S3_BUCKET_NAME=<S3バケット名>
+DYNAMODB_TABLE_NAME=<DynamoDBテーブル名>
+            </code></pre>
+
+            <h3>2. デプロイメント手順</h3>
+            <ol>
+                <li>ソースコードのビルド
+                    <pre><code>go build -o app cmd/main.go</code></pre>
+                </li>
+                <li>アプリケーションの起動
+                    <pre><code>./app</code></pre>
+                </li>
+            </ol>
+
+            <h3>3. 監視とメンテナンス</h3>
+            <h4>3.1 ログ監視</h4>
+            <ul>
+                <li>アプリケーションログの確認</li>
+                <li>AWSマネジメントコンソールでのリソース監視</li>
+            </ul>
+
+            <h4>3.2 バックアップ</h4>
+            <ul>
+                <li>S3バケットのバージョニング設定</li>
+                <li>DynamoDBのバックアップ設定</li>
+            </ul>
+
+            <h3>4. トラブルシューティング</h3>
+            <h4>4.1 一般的な問題と解決方法</h4>
+            <ol>
+                <li>接続エラー
+                    <ul>
+                        <li>AWS認証情報の確認</li>
+                        <li>ネットワーク設定の確認</li>
+                    </ul>
+                </li>
+                <li>パフォーマンス問題
+                    <ul>
+                        <li>DynamoDBのキャパシティユニット確認</li>
+                        <li>S3のリクエスト制限確認</li>
+                    </ul>
+                </li>
+            </ol>
+        </section>
+    </main>
+
+    <script>
+        mermaid.initialize({ startOnLoad: true });
+    </script>
+</body>
+</html> 
