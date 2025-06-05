@@ -18,7 +18,7 @@ import (
 // @version         1.0
 // @description     A Go-based REST API for managing students and teachers.
 // @host            localhost:8082
-// @BasePath        /api/v1
+// @BasePath        /
 
 func main() {
 	// Load configuration

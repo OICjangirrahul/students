@@ -6,7 +6,6 @@ package internal
 import (
 	"github.com/OICjangirrahul/students/internal/adapters/http"
 	"github.com/OICjangirrahul/students/internal/adapters/repositories"
-	"github.com/OICjangirrahul/students/internal/config"
 	"github.com/OICjangirrahul/students/internal/core/ports"
 	"github.com/OICjangirrahul/students/internal/core/services"
 	"github.com/google/wire"
@@ -26,12 +25,10 @@ var teacherRepositorySet = wire.NewSet(
 
 var studentServiceSet = wire.NewSet(
 	services.NewStudentService,
-	wire.Bind(new(ports.StudentService), new(*services.StudentService)),
 )
 
 var teacherServiceSet = wire.NewSet(
 	services.NewTeacherService,
-	wire.Bind(new(ports.TeacherService), new(*services.TeacherService)),
 )
 
 type Handlers struct {
@@ -39,7 +36,7 @@ type Handlers struct {
 	Teacher *http.TeacherHandler
 }
 
-func InitializeHandlers(cfg *config.Config) (*Handlers, error) {
+func InitializeHandlers() (*Handlers, error) {
 	wire.Build(
 		dbSet,
 		studentRepositorySet,

@@ -8,7 +8,7 @@ CREATE DATABASE students_test;
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- Create tables
-CREATE TABLE IF NOT EXISTS teacher_models (
+CREATE TABLE IF NOT EXISTS teachers (
     id BIGSERIAL PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
     email VARCHAR(255) UNIQUE NOT NULL,
@@ -18,7 +18,7 @@ CREATE TABLE IF NOT EXISTS teacher_models (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE IF NOT EXISTS student_models (
+CREATE TABLE IF NOT EXISTS students (
     id BIGSERIAL PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
     email VARCHAR(255) UNIQUE NOT NULL,
@@ -29,9 +29,9 @@ CREATE TABLE IF NOT EXISTS student_models (
 );
 
 CREATE TABLE IF NOT EXISTS teacher_students (
-    teacher_model_id BIGINT REFERENCES teacher_models(id) ON DELETE CASCADE,
-    student_model_id BIGINT REFERENCES student_models(id) ON DELETE CASCADE,
-    PRIMARY KEY (teacher_model_id, student_model_id)
+    teacher_id BIGINT REFERENCES teachers(id) ON DELETE CASCADE,
+    student_id BIGINT REFERENCES students(id) ON DELETE CASCADE,
+    PRIMARY KEY (teacher_id, student_id)
 );
 
 -- Connect to test database and create the same schema
@@ -41,7 +41,7 @@ CREATE TABLE IF NOT EXISTS teacher_students (
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- Create tables
-CREATE TABLE IF NOT EXISTS teacher_models (
+CREATE TABLE IF NOT EXISTS teachers (
     id BIGSERIAL PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
     email VARCHAR(255) UNIQUE NOT NULL,
@@ -51,7 +51,7 @@ CREATE TABLE IF NOT EXISTS teacher_models (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE IF NOT EXISTS student_models (
+CREATE TABLE IF NOT EXISTS students (
     id BIGSERIAL PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
     email VARCHAR(255) UNIQUE NOT NULL,
@@ -62,7 +62,7 @@ CREATE TABLE IF NOT EXISTS student_models (
 );
 
 CREATE TABLE IF NOT EXISTS teacher_students (
-    teacher_model_id BIGINT REFERENCES teacher_models(id) ON DELETE CASCADE,
-    student_model_id BIGINT REFERENCES student_models(id) ON DELETE CASCADE,
-    PRIMARY KEY (teacher_model_id, student_model_id)
+    teacher_id BIGINT REFERENCES teachers(id) ON DELETE CASCADE,
+    student_id BIGINT REFERENCES students(id) ON DELETE CASCADE,
+    PRIMARY KEY (teacher_id, student_id)
 ); 

@@ -1,4 +1,4 @@
-.PHONY: all build test clean docker-up docker-down
+.PHONY: all build test clean docker-up docker-down docs
 
 # Default target
 all: build
@@ -29,4 +29,8 @@ run: docker-up
 
 # Run tests with Docker
 test-with-docker: docker-up
-	go test -v ./... 
+	go test -v ./...
+
+# Generate Swagger documentation
+docs:
+	swag init -g cmd/main.go -o docs 

@@ -27,14 +27,16 @@ func NewTeacherHandler(teacherService ports.TeacherService) *TeacherHandler {
 }
 
 // Create handles teacher creation
-// @Summary      Create a new teacher
-// @Description  Create a new teacher with the provided information
-// @Tags         teachers
-// @Accept       json
-// @Produce      json
-// @Param        teacher body domain.Teacher true "Teacher information"
-// @Success      201 {object} domain.Teacher
-// @Router       /api/v1/teachers [post]
+// @Summary Create a new teacher
+// @Description Create a new teacher with the provided information
+// @Tags teachers
+// @Accept json
+// @Produce json
+// @Param request body domain.Teacher true "Teacher information"
+// @Success 201 {object} response.Response{data=domain.Teacher} "Created teacher"
+// @Failure 400 {object} response.Response "Validation error"
+// @Failure 500 {object} response.Response "Internal server error"
+// @Router /api/v1/teachers [post]
 func (h *TeacherHandler) Create() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		slog.Info("creating a teacher")
@@ -55,26 +57,27 @@ func (h *TeacherHandler) Create() gin.HandlerFunc {
 			return
 		}
 
-		lastID, err := h.teacherService.Create(c.Request.Context(), &teacher)
+		createdTeacher, err := h.teacherService.Create(c.Request.Context(), &teacher)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, response.GeneralError(err))
 			return
 		}
 
-		slog.Info("teacher created successfully", slog.String("teacherId", fmt.Sprint(lastID)))
-		c.JSON(http.StatusCreated, gin.H{"id": lastID})
+		slog.Info("teacher created successfully", slog.String("teacherId", fmt.Sprint(createdTeacher.ID)))
+		response.Success(c, http.StatusCreated, createdTeacher)
 	}
 }
 
 // GetByID handles getting a teacher by ID
-// @Summary      Get a teacher by ID
-// @Description  Get a teacher's information by their ID
-// @Tags         teachers
-// @Accept       json
-// @Produce      json
-// @Param        id path int true "Teacher ID"
-// @Success      200 {object} domain.Teacher
-// @Router       /api/v1/teachers/{id} [get]
+// @Summary Get a teacher by ID
+// @Description Get a teacher's information by their ID
+// @Tags teachers
+// @Accept json
+// @Produce json
+// @Param id path int true "Teacher ID"
+// @Success 200 {object} response.Response{data=domain.Teacher} "Teacher found"
+// @Failure 404 {object} response.Response "Teacher not found"
+// @Router /api/v1/teachers/{id} [get]
 func (h *TeacherHandler) GetByID() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		id, err := strconv.ParseInt(c.Param("id"), 10, 64)
@@ -90,7 +93,7 @@ func (h *TeacherHandler) GetByID() gin.HandlerFunc {
 			return
 		}
 
-		c.JSON(http.StatusOK, teacher)
+		response.Success(c, http.StatusOK, teacher)
 	}
 }
 
@@ -130,7 +133,7 @@ func (h *TeacherHandler) Update() gin.HandlerFunc {
 			return
 		}
 
-		c.JSON(http.StatusOK, updatedTeacher)
+		response.Success(c, http.StatusOK, updatedTeacher)
 	}
 }
 
@@ -157,18 +160,20 @@ func (h *TeacherHandler) Delete() gin.HandlerFunc {
 			return
 		}
 
-		c.JSON(http.StatusNoContent, nil)
+		response.Success(c, http.StatusNoContent, nil)
 	}
 }
 
 // Login handles teacher authentication
-// @Summary      Login teacher
-// @Description  Authenticate a teacher and return a JWT token
-// @Tags         teachers
-// @Accept       json
-// @Produce      json
-// @Param        credentials body domain.TeacherLogin true "Login credentials"
-// @Router       /api/v1/teachers/login [post]
+// @Summary Login teacher
+// @Description Authenticate a teacher and return a JWT token
+// @Tags teachers
+// @Accept json
+// @Produce json
+// @Param request body domain.TeacherLogin true "Login credentials"
+// @Success 200 {object} response.Response{data=map[string]string{token=string}} "Login successful"
+// @Failure 401 {object} response.Response "Invalid credentials"
+// @Router /api/v1/teachers/login [post]
 func (h *TeacherHandler) Login() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		slog.Info("logging in a teacher")
@@ -197,19 +202,21 @@ func (h *TeacherHandler) Login() gin.HandlerFunc {
 		}
 
 		slog.Info("teacher logged in successfully", slog.String("email", login.Email))
-		c.JSON(http.StatusOK, gin.H{"token": token})
+		response.Success(c, http.StatusOK, gin.H{"token": token})
 	}
 }
 
 // AssignStudent handles assigning a student to a teacher
-// @Summary      Assign student to teacher
-// @Description  Assign a student to a teacher
-// @Tags         teachers
-// @Accept       json
-// @Produce      json
-// @Param        id path int true "Teacher ID"
-// @Param        studentId path int true "Student ID"
-// @Router       /api/v1/teachers/{id}/students/{studentId} [post]
+// @Summary Assign student to teacher
+// @Description Assign a student to a teacher
+// @Tags teachers
+// @Accept json
+// @Produce json
+// @Param id path int true "Teacher ID" example:"1"
+// @Param studentId path int true "Student ID" example:"2"
+// @Success 200 {object} response.Response{data=map[string]string{message=string}} "Student assigned"
+// @Failure 404 {object} response.Response "Teacher or student not found"
+// @Router /api/v1/teachers/{id}/students/{studentId} [post]
 func (h *TeacherHandler) AssignStudent() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		teacherID, err := strconv.ParseInt(c.Param("id"), 10, 64)
@@ -232,19 +239,20 @@ func (h *TeacherHandler) AssignStudent() gin.HandlerFunc {
 			return
 		}
 
-		c.JSON(http.StatusOK, gin.H{"message": "Student assigned successfully"})
+		response.Success(c, http.StatusOK, gin.H{"message": "Student assigned successfully"})
 	}
 }
 
 // GetStudents handles getting all students assigned to a teacher
-// @Summary      Get teacher's students
-// @Description  Get all students assigned to a teacher
-// @Tags         teachers
-// @Accept       json
-// @Produce      json
-// @Param        id path int true "Teacher ID"
-// @Success      200 {array} domain.Student
-// @Router       /api/v1/teachers/{id}/students [get]
+// @Summary Get teacher's students
+// @Description Get all students assigned to a teacher
+// @Tags teachers
+// @Accept json
+// @Produce json
+// @Param id path int true "Teacher ID" example:"1"
+// @Success 200 {object} response.Response{data=[]domain.Student} "List of students"
+// @Failure 404 {object} response.Response "Teacher not found"
+// @Router /api/v1/teachers/{id}/students [get]
 func (h *TeacherHandler) GetStudents() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		teacherID, err := strconv.ParseInt(c.Param("id"), 10, 64)
@@ -260,6 +268,6 @@ func (h *TeacherHandler) GetStudents() gin.HandlerFunc {
 			return
 		}
 
-		c.JSON(http.StatusOK, students)
+		response.Success(c, http.StatusOK, students)
 	}
 }

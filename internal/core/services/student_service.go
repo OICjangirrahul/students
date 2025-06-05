@@ -23,8 +23,8 @@ func (s *StudentService) Create(ctx context.Context, student *domain.Student) (*
 		return nil, err
 	}
 
-	student.ID = id
-	return student, nil
+	// Fetch the complete record to get timestamps
+	return s.repo.GetStudentByID(id)
 }
 
 func (s *StudentService) GetByID(ctx context.Context, id int64) (*domain.Student, error) {

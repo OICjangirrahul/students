@@ -27,14 +27,16 @@ func NewStudentHandler(studentService ports.StudentService) *StudentHandler {
 }
 
 // Create handles student creation
-// @Summary      Create a new student
-// @Description  Create a new student with the provided information
-// @Tags         students
-// @Accept       json
-// @Produce      json
-// @Param        student body domain.Student true "Student information"
-// @Success      201 {object} domain.Student
-// @Router       /api/v1/students [post]
+// @Summary Create a new student
+// @Description Create a new student with the provided information
+// @Tags students
+// @Accept json
+// @Produce json
+// @Param request body domain.Student true "Student information"
+// @Success 201 {object} response.Response{data=domain.Student} "Created student"
+// @Failure 400 {object} response.Response "Validation error"
+// @Failure 500 {object} response.Response "Internal server error"
+// @Router /api/v1/students [post]
 func (h *StudentHandler) Create() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		slog.Info("creating a student")
@@ -62,19 +64,20 @@ func (h *StudentHandler) Create() gin.HandlerFunc {
 		}
 
 		slog.Info("user created successfully", slog.String("userId", fmt.Sprint(createdStudent.ID)))
-		c.JSON(http.StatusCreated, createdStudent)
+		response.Success(c, http.StatusCreated, createdStudent)
 	}
 }
 
 // GetByID handles getting a student by ID
-// @Summary      Get a student by ID
-// @Description  Get a student's information by their ID
-// @Tags         students
-// @Accept       json
-// @Produce      json
-// @Param        id path int true "Student ID"
-// @Success      200 {object} domain.Student
-// @Router       /api/v1/students/{id} [get]
+// @Summary Get a student by ID
+// @Description Get a student's information by their ID
+// @Tags students
+// @Accept json
+// @Produce json
+// @Param id path int true "Student ID"
+// @Success 200 {object} response.Response{data=domain.Student} "Student found"
+// @Failure 404 {object} response.Response "Student not found"
+// @Router /api/v1/students/{id} [get]
 func (h *StudentHandler) GetByID() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		id, err := strconv.ParseInt(c.Param("id"), 10, 64)
@@ -92,18 +95,20 @@ func (h *StudentHandler) GetByID() gin.HandlerFunc {
 			return
 		}
 
-		c.JSON(http.StatusOK, student)
+		response.Success(c, http.StatusOK, student)
 	}
 }
 
 // Login handles student authentication
-// @Summary      Login student
-// @Description  Authenticate a student and return a JWT token
-// @Tags         students
-// @Accept       json
-// @Produce      json
-// @Param        credentials body domain.StudentLogin true "Login credentials"
-// @Router       /api/v1/students/login [post]
+// @Summary Login student
+// @Description Authenticate a student and return a JWT token
+// @Tags students
+// @Accept json
+// @Produce json
+// @Param request body domain.StudentLogin true "Login credentials"
+// @Success 200 {object} response.Response{data=map[string]string{token=string}} "Login successful"
+// @Failure 401 {object} response.Response "Invalid credentials"
+// @Router /api/v1/students/login [post]
 func (h *StudentHandler) Login() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		slog.Info("logging in a student")
@@ -132,6 +137,6 @@ func (h *StudentHandler) Login() gin.HandlerFunc {
 		}
 
 		slog.Info("user logged in successfully", slog.String("email", login.Email))
-		c.JSON(http.StatusOK, gin.H{"token": token})
+		response.Success(c, http.StatusOK, gin.H{"token": token})
 	}
 }

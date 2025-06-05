@@ -23,8 +23,8 @@ func (s *TeacherService) Create(ctx context.Context, teacher *domain.Teacher) (*
 		return nil, err
 	}
 
-	teacher.ID = id
-	return teacher, nil
+	// Fetch the complete record to get timestamps
+	return s.repo.GetTeacherByID(id)
 }
 
 func (s *TeacherService) GetByID(ctx context.Context, id int64) (*domain.Teacher, error) {
@@ -36,7 +36,9 @@ func (s *TeacherService) Update(ctx context.Context, teacher *domain.Teacher) (*
 	if err != nil {
 		return nil, err
 	}
-	return teacher, nil
+
+	// Fetch the updated record to get the latest timestamps
+	return s.repo.GetTeacherByID(teacher.ID)
 }
 
 func (s *TeacherService) Delete(ctx context.Context, id int64) error {

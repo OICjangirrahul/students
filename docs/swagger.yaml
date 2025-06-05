@@ -1,20 +1,79 @@
-basePath: /api/v1
+basePath: /
 definitions:
+  domain.Document:
+    properties:
+      created_at:
+        type: string
+      data:
+        additionalProperties: true
+        type: object
+      id:
+        type: string
+      type:
+        type: string
+      updated_at:
+        type: string
+    required:
+    - data
+    - type
+    type: object
+  domain.DocumentCreate:
+    properties:
+      data:
+        additionalProperties: true
+        type: object
+      type:
+        type: string
+    required:
+    - data
+    - type
+    type: object
+  domain.DocumentUpdate:
+    properties:
+      data:
+        additionalProperties: true
+        type: object
+    required:
+    - data
+    type: object
+  domain.File:
+    properties:
+      bucket_name:
+        example: my-bucket
+        type: string
+      content_type:
+        example: application/pdf
+        type: string
+      id:
+        example: 123e4567-e89b-12d3-a456-426614174000
+        type: string
+      name:
+        example: document.pdf
+        type: string
+      size:
+        example: 1048576
+        type: integer
+      uploaded_at:
+        example: "2024-03-21T15:30:45Z"
+        type: string
+      url:
+        example: https://storage.example.com/files/document.pdf
+        type: string
+    type: object
   domain.Student:
     properties:
       age:
+        example: 25
         type: integer
-      created_at:
-        type: string
       email:
+        example: john.doe@example.com
         type: string
-      id:
-        type: integer
       name:
+        example: John Doe
         type: string
       password:
-        type: string
-      updated_at:
+        example: SecurePass123
+        minLength: 6
         type: string
     required:
     - age
@@ -25,8 +84,11 @@ definitions:
   domain.StudentLogin:
     properties:
       email:
+        example: john.doe@example.com
         type: string
       password:
+        example: SecurePass123
+        minLength: 6
         type: string
     required:
     - email
@@ -34,23 +96,18 @@ definitions:
     type: object
   domain.Teacher:
     properties:
-      created_at:
-        type: string
       email:
+        example: jane.smith@example.com
         type: string
-      id:
-        type: integer
       name:
+        example: Jane Smith
         type: string
       password:
+        example: SecurePass123
+        minLength: 6
         type: string
-      students:
-        items:
-          $ref: '#/definitions/domain.Student'
-        type: array
       subject:
-        type: string
-      updated_at:
+        example: Mathematics
         type: string
     required:
     - email
@@ -61,12 +118,23 @@ definitions:
   domain.TeacherLogin:
     properties:
       email:
+        example: jane.smith@example.com
         type: string
       password:
+        example: SecurePass123
+        minLength: 6
         type: string
     required:
     - email
     - password
+    type: object
+  response.Response:
+    properties:
+      error:
+        type: string
+      status:
+        description: when its convert into json show status not Status
+        type: string
     type: object
 host: localhost:8082
 info:
@@ -75,6 +143,173 @@ info:
   title: Student-Teacher Management API
   version: "1.0"
 paths:
+  /api/v1/documents:
+    get:
+      description: List documents from DynamoDB by type
+      parameters:
+      - description: Document type
+        in: query
+        name: type
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/domain.Document'
+            type: array
+      summary: List documents from DynamoDB
+      tags:
+      - documents
+    post:
+      consumes:
+      - application/json
+      description: Create a new document in DynamoDB
+      parameters:
+      - description: Document to create
+        in: body
+        name: document
+        required: true
+        schema:
+          $ref: '#/definitions/domain.DocumentCreate'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/domain.Document'
+      summary: Create a document in DynamoDB
+      tags:
+      - documents
+  /api/v1/documents/{id}:
+    delete:
+      description: Delete a document from DynamoDB by ID
+      parameters:
+      - description: Document ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No Content
+      summary: Delete a document from DynamoDB
+      tags:
+      - documents
+    get:
+      description: Get a document from DynamoDB by ID
+      parameters:
+      - description: Document ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/domain.Document'
+      summary: Get a document from DynamoDB
+      tags:
+      - documents
+    put:
+      consumes:
+      - application/json
+      description: Update a document in DynamoDB by ID
+      parameters:
+      - description: Document ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Document update data
+        in: body
+        name: document
+        required: true
+        schema:
+          $ref: '#/definitions/domain.DocumentUpdate'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/domain.Document'
+      summary: Update a document in DynamoDB
+      tags:
+      - documents
+  /api/v1/files:
+    get:
+      description: List all files from S3 storage
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/domain.File'
+            type: array
+      summary: List files from S3
+      tags:
+      - files
+    post:
+      consumes:
+      - multipart/form-data
+      description: Upload a file to S3 storage
+      parameters:
+      - description: File to upload
+        in: formData
+        name: file
+        required: true
+        type: file
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/domain.File'
+      summary: Upload a file to S3
+      tags:
+      - files
+  /api/v1/files/{id}:
+    delete:
+      description: Delete a file from S3 storage
+      parameters:
+      - description: File ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No Content
+      summary: Delete a file from S3
+      tags:
+      - files
+    get:
+      description: Download a file from S3 storage
+      parameters:
+      - description: File ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/octet-stream
+      responses:
+        "200":
+          description: OK
+      summary: Download a file from S3
+      tags:
+      - files
   /api/v1/students:
     post:
       consumes:
@@ -83,7 +318,7 @@ paths:
       parameters:
       - description: Student information
         in: body
-        name: student
+        name: request
         required: true
         schema:
           $ref: '#/definitions/domain.Student'
@@ -91,9 +326,22 @@ paths:
       - application/json
       responses:
         "201":
-          description: Created
+          description: Created student
           schema:
-            $ref: '#/definitions/domain.Student'
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/domain.Student'
+              type: object
+        "400":
+          description: Validation error
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/response.Response'
       summary: Create a new student
       tags:
       - students
@@ -112,9 +360,18 @@ paths:
       - application/json
       responses:
         "200":
-          description: OK
+          description: Student found
           schema:
-            $ref: '#/definitions/domain.Student'
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/domain.Student'
+              type: object
+        "404":
+          description: Student not found
+          schema:
+            $ref: '#/definitions/response.Response'
       summary: Get a student by ID
       tags:
       - students
@@ -126,13 +383,33 @@ paths:
       parameters:
       - description: Login credentials
         in: body
-        name: credentials
+        name: request
         required: true
         schema:
           $ref: '#/definitions/domain.StudentLogin'
       produces:
       - application/json
-      responses: {}
+      responses:
+        "200":
+          description: Login successful
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  additionalProperties:
+                    allOf:
+                    - type: string
+                    - properties:
+                        token:
+                          type: string
+                      type: object
+                  type: object
+              type: object
+        "401":
+          description: Invalid credentials
+          schema:
+            $ref: '#/definitions/response.Response'
       summary: Login student
       tags:
       - students
@@ -144,7 +421,7 @@ paths:
       parameters:
       - description: Teacher information
         in: body
-        name: teacher
+        name: request
         required: true
         schema:
           $ref: '#/definitions/domain.Teacher'
@@ -152,9 +429,22 @@ paths:
       - application/json
       responses:
         "201":
-          description: Created
+          description: Created teacher
           schema:
-            $ref: '#/definitions/domain.Teacher'
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/domain.Teacher'
+              type: object
+        "400":
+          description: Validation error
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/response.Response'
       summary: Create a new teacher
       tags:
       - teachers
@@ -191,9 +481,18 @@ paths:
       - application/json
       responses:
         "200":
-          description: OK
+          description: Teacher found
           schema:
-            $ref: '#/definitions/domain.Teacher'
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/domain.Teacher'
+              type: object
+        "404":
+          description: Teacher not found
+          schema:
+            $ref: '#/definitions/response.Response'
       summary: Get a teacher by ID
       tags:
       - teachers
@@ -238,11 +537,20 @@ paths:
       - application/json
       responses:
         "200":
-          description: OK
+          description: List of students
           schema:
-            items:
-              $ref: '#/definitions/domain.Student'
-            type: array
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/domain.Student'
+                  type: array
+              type: object
+        "404":
+          description: Teacher not found
+          schema:
+            $ref: '#/definitions/response.Response'
       summary: Get teacher's students
       tags:
       - teachers
@@ -264,7 +572,27 @@ paths:
         type: integer
       produces:
       - application/json
-      responses: {}
+      responses:
+        "200":
+          description: Student assigned
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  additionalProperties:
+                    allOf:
+                    - type: string
+                    - properties:
+                        message:
+                          type: string
+                      type: object
+                  type: object
+              type: object
+        "404":
+          description: Teacher or student not found
+          schema:
+            $ref: '#/definitions/response.Response'
       summary: Assign student to teacher
       tags:
       - teachers
@@ -276,13 +604,33 @@ paths:
       parameters:
       - description: Login credentials
         in: body
-        name: credentials
+        name: request
         required: true
         schema:
           $ref: '#/definitions/domain.TeacherLogin'
       produces:
       - application/json
-      responses: {}
+      responses:
+        "200":
+          description: Login successful
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  additionalProperties:
+                    allOf:
+                    - type: string
+                    - properties:
+                        token:
+                          type: string
+                      type: object
+                  type: object
+              type: object
+        "401":
+          description: Invalid credentials
+          schema:
+            $ref: '#/definitions/response.Response'
       summary: Login teacher
       tags:
       - teachers

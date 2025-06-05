@@ -16,16 +16,20 @@ type TeacherRepository struct {
 	cfg *config.Config
 }
 
-// TeacherModel represents the teacher entity in the database
-type TeacherModel struct {
-	ID        uint           `gorm:"primaryKey"`
-	Name      string         `gorm:"not null"`
-	Email     string         `gorm:"uniqueIndex;not null"`
-	Password  string         `gorm:"not null"`
-	Subject   string         `gorm:"not null"`
-	CreatedAt time.Time      `gorm:"autoCreateTime"`
-	UpdatedAt time.Time      `gorm:"autoUpdateTime"`
-	Students  []StudentModel `gorm:"many2many:teacher_students;"`
+// Teacher represents the teacher entity in the database
+type Teacher struct {
+	ID        uint      `gorm:"primaryKey"`
+	Name      string    `gorm:"not null"`
+	Email     string    `gorm:"uniqueIndex;not null"`
+	Password  string    `gorm:"not null"`
+	Subject   string    `gorm:"not null"`
+	CreatedAt time.Time `gorm:"autoCreateTime"`
+	UpdatedAt time.Time `gorm:"autoUpdateTime"`
+	Students  []Student `gorm:"many2many:teacher_students;"`
+}
+
+func (Teacher) TableName() string {
+	return "teachers"
 }
 
 func NewTeacherRepository(db *gorm.DB, cfg *config.Config) *TeacherRepository {
@@ -41,7 +45,7 @@ func (r *TeacherRepository) CreateTeacher(name, email, password, subject string)
 		return 0, fmt.Errorf("failed to hash password: %w", err)
 	}
 
-	teacher := TeacherModel{
+	teacher := Teacher{
 		Name:     name,
 		Email:    email,
 		Password: string(hashedPassword),
@@ -57,7 +61,7 @@ func (r *TeacherRepository) CreateTeacher(name, email, password, subject string)
 }
 
 func (r *TeacherRepository) GetTeacherByID(id int64) (*domain.Teacher, error) {
-	var teacher TeacherModel
+	var teacher Teacher
 	result := r.db.First(&teacher, id)
 	if result.Error != nil {
 		if result.Error == gorm.ErrRecordNotFound {
@@ -77,7 +81,7 @@ func (r *TeacherRepository) GetTeacherByID(id int64) (*domain.Teacher, error) {
 }
 
 func (r *TeacherRepository) GetTeacherByEmail(email string) (*domain.Teacher, error) {
-	var teacher TeacherModel
+	var teacher Teacher
 	result := r.db.Where("email = ?", email).First(&teacher)
 	if result.Error != nil {
 		return nil, result.Error
@@ -95,19 +99,31 @@ func (r *TeacherRepository) GetTeacherByEmail(email string) (*domain.Teacher, er
 }
 
 func (r *TeacherRepository) UpdateTeacher(teacher *domain.Teacher) error {
-	model := TeacherModel{
+	model := Teacher{
 		Name:    teacher.Name,
 		Email:   teacher.Email,
 		Subject: teacher.Subject,
 	}
 	model.ID = uint(teacher.ID)
 
-	result := r.db.Save(&model)
-	return result.Error
+	result := r.db.Model(&Teacher{}).Where("id = ?", teacher.ID).Updates(map[string]interface{}{
+		"name":    teacher.Name,
+		"email":   teacher.Email,
+		"subject": teacher.Subject,
+	})
+	if result.Error != nil {
+		return fmt.Errorf("failed to update teacher: %w", result.Error)
+	}
+
+	if result.RowsAffected == 0 {
+		return fmt.Errorf("no teacher found with id: %d", teacher.ID)
+	}
+
+	return nil
 }
 
 func (r *TeacherRepository) DeleteTeacher(id int64) error {
-	result := r.db.Delete(&TeacherModel{}, id)
+	result := r.db.Delete(&Teacher{}, id)
 	if result.Error != nil {
 		return fmt.Errorf("failed to delete teacher: %w", result.Error)
 	}
@@ -120,7 +136,7 @@ func (r *TeacherRepository) DeleteTeacher(id int64) error {
 }
 
 func (r *TeacherRepository) LoginTeacher(email, password string) (string, error) {
-	var teacher TeacherModel
+	var teacher Teacher
 	result := r.db.Where("email = ?", email).First(&teacher)
 	if result.Error != nil {
 		if result.Error == gorm.ErrRecordNotFound {
@@ -151,9 +167,9 @@ func (r *TeacherRepository) LoginTeacher(email, password string) (string, error)
 
 func (r *TeacherRepository) AssignStudent(teacherID, studentID int64) error {
 	result := r.db.Exec(`
-		INSERT INTO teacher_students (teacher_model_id, student_model_id) 
+		INSERT INTO teacher_students (teacher_id, student_id) 
 		VALUES (?, ?) 
-		ON CONFLICT (teacher_model_id, student_model_id) DO NOTHING
+		ON CONFLICT (teacher_id, student_id) DO NOTHING
 	`, teacherID, studentID)
 	if result.Error != nil {
 		return fmt.Errorf("failed to assign student to teacher: %w", result.Error)
@@ -163,11 +179,11 @@ func (r *TeacherRepository) AssignStudent(teacherID, studentID int64) error {
 }
 
 func (r *TeacherRepository) GetStudentsByTeacherID(teacherID int64) ([]domain.Student, error) {
-	var students []StudentModel
+	var students []Student
 	result := r.db.Raw(`
-		SELECT s.* FROM student_models s
-		JOIN teacher_students ts ON s.id = ts.student_model_id
-		WHERE ts.teacher_model_id = ?
+		SELECT s.* FROM students s
+		JOIN teacher_students ts ON s.id = ts.student_id
+		WHERE ts.teacher_id = ?
 	`, teacherID).Scan(&students)
 	if result.Error != nil {
 		return nil, fmt.Errorf("failed to get students: %w", result.Error)
