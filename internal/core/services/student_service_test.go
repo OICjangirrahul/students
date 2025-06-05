@@ -27,13 +27,25 @@ func TestStudentService_Create(t *testing.T) {
 	mockRepo.On("CreateStudent", student.Name, student.Email, student.Age, student.Password).
 		Return(int64(1), nil)
 
+	expectedStudent := &domain.Student{
+		ID:        1,
+		Name:      student.Name,
+		Email:     student.Email,
+		Age:       student.Age,
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+	}
+	mockRepo.On("GetStudentByID", int64(1)).Return(expectedStudent, nil)
+
 	// Test
 	result, err := service.Create(ctx, student)
 
 	// Assertions
 	assert.NoError(t, err)
 	assert.NotNil(t, result)
-	assert.Equal(t, int64(1), result.ID)
+	assert.Equal(t, expectedStudent.ID, result.ID)
+	assert.Equal(t, expectedStudent.Name, result.Name)
+	assert.Equal(t, expectedStudent.Email, result.Email)
 	mockRepo.AssertExpectations(t)
 }
 
@@ -77,11 +89,7 @@ func TestStudentService_Login(t *testing.T) {
 	expectedToken := "jwt-token"
 
 	// Mock expectations
-	mockRepo.On("GetStudentByEmail", email).Return(&domain.Student{
-		ID:       1,
-		Email:    email,
-		Password: password,
-	}, nil)
+	mockRepo.On("LoginStudent", email, password).Return(expectedToken, nil)
 
 	// Test
 	token, err := service.Login(ctx, email, password)
@@ -89,6 +97,6 @@ func TestStudentService_Login(t *testing.T) {
 	// Assertions
 	assert.NoError(t, err)
 	assert.NotEmpty(t, token)
-	assert.NotEqual(t, expectedToken, token) // Token should be dynamically generated
+	assert.Equal(t, expectedToken, token)
 	mockRepo.AssertExpectations(t)
 }

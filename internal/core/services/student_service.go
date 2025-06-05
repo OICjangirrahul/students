@@ -32,16 +32,5 @@ func (s *StudentService) GetByID(ctx context.Context, id int64) (*domain.Student
 }
 
 func (s *StudentService) Login(ctx context.Context, email, password string) (string, error) {
-	student, err := s.repo.GetStudentByEmail(email)
-	if err != nil {
-		return "", err
-	}
-
-	// TODO: Add password verification
-	if student.Password != password {
-		return "", domain.ErrInvalidCredentials
-	}
-
-	// TODO: Generate JWT token
-	return "student-jwt-token", nil
+	return s.repo.LoginStudent(email, password)
 }

@@ -46,18 +46,7 @@ func (s *TeacherService) Delete(ctx context.Context, id int64) error {
 }
 
 func (s *TeacherService) Login(ctx context.Context, email, password string) (string, error) {
-	teacher, err := s.repo.GetTeacherByEmail(email)
-	if err != nil {
-		return "", err
-	}
-
-	// TODO: Add password verification
-	if teacher.Password != password {
-		return "", domain.ErrInvalidCredentials
-	}
-
-	// TODO: Generate JWT token
-	return "teacher-jwt-token", nil
+	return s.repo.LoginTeacher(email, password)
 }
 
 func (s *TeacherService) AssignStudent(ctx context.Context, teacherID, studentID int64) error {

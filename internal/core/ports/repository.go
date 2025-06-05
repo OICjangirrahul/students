@@ -7,6 +7,7 @@ type StudentRepository interface {
 	CreateStudent(name, email string, age int, password string) (int64, error)
 	GetStudentByID(id int64) (*domain.Student, error)
 	GetStudentByEmail(email string) (*domain.Student, error)
+	LoginStudent(email, password string) (string, error)
 }
 
 //go:generate mockery --name=TeacherRepository --output=mocks --outpkg=mocks --case=snake
@@ -18,4 +19,5 @@ type TeacherRepository interface {
 	DeleteTeacher(id int64) error
 	AssignStudent(teacherID, studentID int64) error
 	GetStudentsByTeacherID(teacherID int64) ([]domain.Student, error)
+	LoginTeacher(email, password string) (string, error)
 }

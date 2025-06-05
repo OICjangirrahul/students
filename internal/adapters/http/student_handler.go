@@ -74,8 +74,10 @@ func (h *StudentHandler) Create() gin.HandlerFunc {
 // @Tags students
 // @Accept json
 // @Produce json
+// @Security BearerAuth
 // @Param id path int true "Student ID"
 // @Success 200 {object} response.Response{data=domain.Student} "Student found"
+// @Failure 401 {object} response.Response "Unauthorized"
 // @Failure 404 {object} response.Response "Student not found"
 // @Router /api/v1/students/{id} [get]
 func (h *StudentHandler) GetByID() gin.HandlerFunc {

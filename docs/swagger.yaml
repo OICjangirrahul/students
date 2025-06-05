@@ -368,10 +368,16 @@ paths:
                 data:
                   $ref: '#/definitions/domain.Student'
               type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.Response'
         "404":
           description: Student not found
           schema:
             $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
       summary: Get a student by ID
       tags:
       - students
@@ -462,8 +468,32 @@ paths:
       produces:
       - application/json
       responses:
-        "204":
-          description: No Content
+        "200":
+          description: Teacher deleted
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  additionalProperties:
+                    allOf:
+                    - type: string
+                    - properties:
+                        message:
+                          type: string
+                      type: object
+                  type: object
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.Response'
+        "404":
+          description: Teacher not found
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
       summary: Delete a teacher
       tags:
       - teachers
@@ -489,10 +519,16 @@ paths:
                 data:
                   $ref: '#/definitions/domain.Teacher'
               type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.Response'
         "404":
           description: Teacher not found
           schema:
             $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
       summary: Get a teacher by ID
       tags:
       - teachers
@@ -508,7 +544,7 @@ paths:
         type: integer
       - description: Teacher information
         in: body
-        name: teacher
+        name: request
         required: true
         schema:
           $ref: '#/definitions/domain.Teacher'
@@ -516,9 +552,24 @@ paths:
       - application/json
       responses:
         "200":
-          description: OK
+          description: Teacher updated
           schema:
-            $ref: '#/definitions/domain.Teacher'
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/domain.Teacher'
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.Response'
+        "404":
+          description: Teacher not found
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
       summary: Update a teacher
       tags:
       - teachers
@@ -547,10 +598,16 @@ paths:
                     $ref: '#/definitions/domain.Student'
                   type: array
               type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.Response'
         "404":
           description: Teacher not found
           schema:
             $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
       summary: Get teacher's students
       tags:
       - teachers
@@ -589,10 +646,16 @@ paths:
                       type: object
                   type: object
               type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.Response'
         "404":
           description: Teacher or student not found
           schema:
             $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
       summary: Assign student to teacher
       tags:
       - teachers
@@ -634,4 +697,10 @@ paths:
       summary: Login teacher
       tags:
       - teachers
+securityDefinitions:
+  BearerAuth:
+    description: Enter the token with the `Bearer ` prefix, e.g. "Bearer abcde12345".
+    in: header
+    name: Authorization
+    type: apiKey
 swagger: "2.0"

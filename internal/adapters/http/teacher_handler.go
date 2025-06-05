@@ -74,8 +74,10 @@ func (h *TeacherHandler) Create() gin.HandlerFunc {
 // @Tags teachers
 // @Accept json
 // @Produce json
+// @Security BearerAuth
 // @Param id path int true "Teacher ID"
 // @Success 200 {object} response.Response{data=domain.Teacher} "Teacher found"
+// @Failure 401 {object} response.Response "Unauthorized"
 // @Failure 404 {object} response.Response "Teacher not found"
 // @Router /api/v1/teachers/{id} [get]
 func (h *TeacherHandler) GetByID() gin.HandlerFunc {
@@ -85,6 +87,8 @@ func (h *TeacherHandler) GetByID() gin.HandlerFunc {
 			c.JSON(http.StatusBadRequest, response.GeneralError(err))
 			return
 		}
+
+		slog.Info("getting a teacher", slog.String("id", fmt.Sprint(id)))
 
 		teacher, err := h.teacherService.GetByID(c.Request.Context(), id)
 		if err != nil {
@@ -98,15 +102,18 @@ func (h *TeacherHandler) GetByID() gin.HandlerFunc {
 }
 
 // Update handles updating a teacher
-// @Summary      Update a teacher
-// @Description  Update a teacher's information
-// @Tags         teachers
-// @Accept       json
-// @Produce      json
-// @Param        id path int true "Teacher ID"
-// @Param        teacher body domain.Teacher true "Teacher information"
-// @Success      200 {object} domain.Teacher
-// @Router       /api/v1/teachers/{id} [put]
+// @Summary Update a teacher
+// @Description Update a teacher's information
+// @Tags teachers
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path int true "Teacher ID"
+// @Param request body domain.Teacher true "Teacher information"
+// @Success 200 {object} response.Response{data=domain.Teacher} "Teacher updated"
+// @Failure 401 {object} response.Response "Unauthorized"
+// @Failure 404 {object} response.Response "Teacher not found"
+// @Router /api/v1/teachers/{id} [put]
 func (h *TeacherHandler) Update() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		id, err := strconv.ParseInt(c.Param("id"), 10, 64)
@@ -138,14 +145,17 @@ func (h *TeacherHandler) Update() gin.HandlerFunc {
 }
 
 // Delete handles deleting a teacher
-// @Summary      Delete a teacher
-// @Description  Delete a teacher by their ID
-// @Tags         teachers
-// @Accept       json
-// @Produce      json
-// @Param        id path int true "Teacher ID"
-// @Success      204 "No Content"
-// @Router       /api/v1/teachers/{id} [delete]
+// @Summary Delete a teacher
+// @Description Delete a teacher by their ID
+// @Tags teachers
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path int true "Teacher ID"
+// @Success 200 {object} response.Response{data=map[string]string{message=string}} "Teacher deleted"
+// @Failure 401 {object} response.Response "Unauthorized"
+// @Failure 404 {object} response.Response "Teacher not found"
+// @Router /api/v1/teachers/{id} [delete]
 func (h *TeacherHandler) Delete() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		id, err := strconv.ParseInt(c.Param("id"), 10, 64)
@@ -160,7 +170,7 @@ func (h *TeacherHandler) Delete() gin.HandlerFunc {
 			return
 		}
 
-		response.Success(c, http.StatusNoContent, nil)
+		response.Success(c, http.StatusOK, gin.H{"message": "Teacher deleted successfully"})
 	}
 }
 
@@ -212,9 +222,11 @@ func (h *TeacherHandler) Login() gin.HandlerFunc {
 // @Tags teachers
 // @Accept json
 // @Produce json
-// @Param id path int true "Teacher ID" example:"1"
-// @Param studentId path int true "Student ID" example:"2"
+// @Security BearerAuth
+// @Param id path int true "Teacher ID"
+// @Param studentId path int true "Student ID"
 // @Success 200 {object} response.Response{data=map[string]string{message=string}} "Student assigned"
+// @Failure 401 {object} response.Response "Unauthorized"
 // @Failure 404 {object} response.Response "Teacher or student not found"
 // @Router /api/v1/teachers/{id}/students/{studentId} [post]
 func (h *TeacherHandler) AssignStudent() gin.HandlerFunc {
@@ -249,8 +261,10 @@ func (h *TeacherHandler) AssignStudent() gin.HandlerFunc {
 // @Tags teachers
 // @Accept json
 // @Produce json
-// @Param id path int true "Teacher ID" example:"1"
+// @Security BearerAuth
+// @Param id path int true "Teacher ID"
 // @Success 200 {object} response.Response{data=[]domain.Student} "List of students"
+// @Failure 401 {object} response.Response "Unauthorized"
 // @Failure 404 {object} response.Response "Teacher not found"
 // @Router /api/v1/teachers/{id}/students [get]
 func (h *TeacherHandler) GetStudents() gin.HandlerFunc {

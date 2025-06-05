@@ -17,15 +17,25 @@ func TestTeacherService_Create(t *testing.T) {
 	ctx := context.Background()
 
 	teacher := &domain.Teacher{
-		Name:     "Jane Smith",
-		Email:    "jane@example.com",
-		Subject:  "Mathematics",
+		Name:     "John Smith",
+		Email:    "john.smith@example.com",
 		Password: "password123",
+		Subject:  "Mathematics",
 	}
 
 	// Mock expectations
 	mockRepo.On("CreateTeacher", teacher.Name, teacher.Email, teacher.Password, teacher.Subject).
 		Return(int64(1), nil)
+
+	expectedTeacher := &domain.Teacher{
+		ID:        1,
+		Name:      teacher.Name,
+		Email:     teacher.Email,
+		Subject:   teacher.Subject,
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+	}
+	mockRepo.On("GetTeacherByID", int64(1)).Return(expectedTeacher, nil)
 
 	// Test
 	result, err := service.Create(ctx, teacher)
@@ -33,7 +43,10 @@ func TestTeacherService_Create(t *testing.T) {
 	// Assertions
 	assert.NoError(t, err)
 	assert.NotNil(t, result)
-	assert.Equal(t, int64(1), result.ID)
+	assert.Equal(t, expectedTeacher.ID, result.ID)
+	assert.Equal(t, expectedTeacher.Name, result.Name)
+	assert.Equal(t, expectedTeacher.Email, result.Email)
+	assert.Equal(t, expectedTeacher.Subject, result.Subject)
 	mockRepo.AssertExpectations(t)
 }
 
@@ -45,8 +58,8 @@ func TestTeacherService_GetByID(t *testing.T) {
 
 	expectedTeacher := &domain.Teacher{
 		ID:        1,
-		Name:      "Jane Smith",
-		Email:     "jane@example.com",
+		Name:      "John Smith",
+		Email:     "john.smith@example.com",
 		Subject:   "Mathematics",
 		CreatedAt: time.Now(),
 	}
@@ -75,13 +88,23 @@ func TestTeacherService_Update(t *testing.T) {
 
 	teacher := &domain.Teacher{
 		ID:      1,
-		Name:    "Jane Smith Updated",
-		Email:   "jane.updated@example.com",
+		Name:    "John Smith Updated",
+		Email:   "john.updated@example.com",
 		Subject: "Physics",
+	}
+
+	updatedTeacher := &domain.Teacher{
+		ID:        1,
+		Name:      teacher.Name,
+		Email:     teacher.Email,
+		Subject:   teacher.Subject,
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
 	}
 
 	// Mock expectations
 	mockRepo.On("UpdateTeacher", teacher).Return(nil)
+	mockRepo.On("GetTeacherByID", int64(1)).Return(updatedTeacher, nil)
 
 	// Test
 	result, err := service.Update(ctx, teacher)
@@ -89,6 +112,7 @@ func TestTeacherService_Update(t *testing.T) {
 	// Assertions
 	assert.NoError(t, err)
 	assert.NotNil(t, result)
+	assert.Equal(t, teacher.ID, result.ID)
 	assert.Equal(t, teacher.Name, result.Name)
 	assert.Equal(t, teacher.Email, result.Email)
 	assert.Equal(t, teacher.Subject, result.Subject)
@@ -118,16 +142,12 @@ func TestTeacherService_Login(t *testing.T) {
 	service := NewTeacherService(mockRepo)
 	ctx := context.Background()
 
-	email := "jane@example.com"
+	email := "john.smith@example.com"
 	password := "password123"
 	expectedToken := "jwt-token"
 
 	// Mock expectations
-	mockRepo.On("GetTeacherByEmail", email).Return(&domain.Teacher{
-		ID:       1,
-		Email:    email,
-		Password: password,
-	}, nil)
+	mockRepo.On("LoginTeacher", email, password).Return(expectedToken, nil)
 
 	// Test
 	token, err := service.Login(ctx, email, password)
@@ -135,7 +155,7 @@ func TestTeacherService_Login(t *testing.T) {
 	// Assertions
 	assert.NoError(t, err)
 	assert.NotEmpty(t, token)
-	assert.NotEqual(t, expectedToken, token) // Token should be dynamically generated
+	assert.Equal(t, expectedToken, token)
 	mockRepo.AssertExpectations(t)
 }
 
@@ -165,6 +185,7 @@ func TestTeacherService_GetStudents(t *testing.T) {
 	service := NewTeacherService(mockRepo)
 	ctx := context.Background()
 
+	teacherID := int64(1)
 	expectedStudents := []domain.Student{
 		{
 			ID:    1,
@@ -181,16 +202,20 @@ func TestTeacherService_GetStudents(t *testing.T) {
 	}
 
 	// Mock expectations
-	mockRepo.On("GetStudentsByTeacherID", int64(1)).Return(expectedStudents, nil)
+	mockRepo.On("GetStudentsByTeacherID", teacherID).Return(expectedStudents, nil)
 
 	// Test
-	result, err := service.GetStudents(ctx, 1)
+	students, err := service.GetStudents(ctx, teacherID)
 
 	// Assertions
 	assert.NoError(t, err)
-	assert.NotNil(t, result)
-	assert.Equal(t, len(expectedStudents), len(result))
-	assert.Equal(t, expectedStudents[0].ID, result[0].ID)
-	assert.Equal(t, expectedStudents[1].ID, result[1].ID)
+	assert.NotNil(t, students)
+	assert.Equal(t, len(expectedStudents), len(students))
+	for i, student := range students {
+		assert.Equal(t, expectedStudents[i].ID, student.ID)
+		assert.Equal(t, expectedStudents[i].Name, student.Name)
+		assert.Equal(t, expectedStudents[i].Email, student.Email)
+		assert.Equal(t, expectedStudents[i].Age, student.Age)
+	}
 	mockRepo.AssertExpectations(t)
 }

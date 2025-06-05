@@ -166,6 +166,34 @@ func (_m *TeacherRepository) GetTeacherByID(id int64) (*domain.Teacher, error) {
 	return r0, r1
 }
 
+// LoginTeacher provides a mock function with given fields: email, password
+func (_m *TeacherRepository) LoginTeacher(email string, password string) (string, error) {
+	ret := _m.Called(email, password)
+
+	if len(ret) == 0 {
+		panic("no return value specified for LoginTeacher")
+	}
+
+	var r0 string
+	var r1 error
+	if rf, ok := ret.Get(0).(func(string, string) (string, error)); ok {
+		return rf(email, password)
+	}
+	if rf, ok := ret.Get(0).(func(string, string) string); ok {
+		r0 = rf(email, password)
+	} else {
+		r0 = ret.Get(0).(string)
+	}
+
+	if rf, ok := ret.Get(1).(func(string, string) error); ok {
+		r1 = rf(email, password)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // UpdateTeacher provides a mock function with given fields: teacher
 func (_m *TeacherRepository) UpdateTeacher(teacher *domain.Teacher) error {
 	ret := _m.Called(teacher)

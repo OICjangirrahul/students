@@ -19,6 +19,10 @@ import (
 // @description     A Go-based REST API for managing students and teachers.
 // @host            localhost:8082
 // @BasePath        /
+// @securityDefinitions.apikey BearerAuth
+// @in header
+// @name Authorization
+// @description Enter the token with the `Bearer ` prefix, e.g. "Bearer abcde12345".
 
 func main() {
 	// Load configuration
@@ -47,16 +51,19 @@ func main() {
 	// Teacher routes
 	teachers := v1.Group("/teachers")
 	{
+		// Public routes
 		teachers.POST("", handlers.Teacher.Create())
 		teachers.POST("/login", handlers.Teacher.Login())
 
-		teacherManagement := teachers.Group("/:id")
+		// Protected routes
+		protected := teachers.Group("/:id")
+		protected.Use(middleware.AuthMiddleware(cfg))
 		{
-			teacherManagement.GET("", handlers.Teacher.GetByID())
-			teacherManagement.PUT("", handlers.Teacher.Update())
-			teacherManagement.DELETE("", handlers.Teacher.Delete())
+			protected.GET("", handlers.Teacher.GetByID())
+			protected.PUT("", handlers.Teacher.Update())
+			protected.DELETE("", handlers.Teacher.Delete())
 
-			studentManagement := teacherManagement.Group("/students")
+			studentManagement := protected.Group("/students")
 			{
 				studentManagement.GET("", handlers.Teacher.GetStudents())
 				studentManagement.POST("/:studentId", handlers.Teacher.AssignStudent())
@@ -67,9 +74,16 @@ func main() {
 	// Student routes
 	students := v1.Group("/students")
 	{
+		// Public routes
 		students.POST("", handlers.Student.Create())
 		students.POST("/login", handlers.Student.Login())
-		students.GET("/:id", handlers.Student.GetByID())
+
+		// Protected routes
+		protected := students.Group("")
+		protected.Use(middleware.AuthMiddleware(cfg))
+		{
+			protected.GET("/:id", handlers.Student.GetByID())
+		}
 	}
 
 	// Swagger documentation
