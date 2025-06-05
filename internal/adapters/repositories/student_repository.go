@@ -11,27 +11,40 @@ import (
 	"gorm.io/gorm"
 )
 
+// 学生リポジトリ構造体：データベースを使用した学生データの永続化を実装
 type StudentRepository struct {
-	db  *gorm.DB
+	// データベース接続
+	db *gorm.DB
+	// アプリケーション設定
 	cfg *config.Config
 }
 
-// Student represents the student entity in the database
+// 学生データベースモデル：データベースのstudentsテーブルとマッピング
 type Student struct {
-	ID        uint      `gorm:"primaryKey"`
-	Name      string    `gorm:"not null"`
-	Email     string    `gorm:"uniqueIndex;not null"`
-	Password  string    `gorm:"not null"`
-	Age       int       `gorm:"not null"`
+	// 学生の一意識別子
+	ID uint `gorm:"primaryKey"`
+	// 学生の氏名
+	Name string `gorm:"not null"`
+	// 学生のメールアドレス（一意）
+	Email string `gorm:"uniqueIndex;not null"`
+	// 学生のパスワード（ハッシュ化）
+	Password string `gorm:"not null"`
+	// 学生の年齢
+	Age int `gorm:"not null"`
+	// レコードの作成日時
 	CreatedAt time.Time `gorm:"autoCreateTime"`
+	// レコードの更新日時
 	UpdatedAt time.Time `gorm:"autoUpdateTime"`
-	Teachers  []Teacher `gorm:"many2many:teacher_students;"`
+	// 担当教師（多対多関係）
+	Teachers []Teacher `gorm:"many2many:teacher_students;"`
 }
 
+// テーブル名を指定する
 func (Student) TableName() string {
 	return "students"
 }
 
+// 新しい学生リポジトリインスタンスを作成する
 func NewStudentRepository(db *gorm.DB, cfg *config.Config) *StudentRepository {
 	return &StudentRepository{
 		db:  db,
@@ -39,12 +52,16 @@ func NewStudentRepository(db *gorm.DB, cfg *config.Config) *StudentRepository {
 	}
 }
 
+// 新しい学生を作成する
+// パスワードをハッシュ化し、データベースに保存して、作成された学生のIDを返す
 func (r *StudentRepository) CreateStudent(name, email string, age int, password string) (int64, error) {
+	// パスワードをハッシュ化
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
 		return 0, fmt.Errorf("failed to hash password: %w", err)
 	}
 
+	// 学生データを作成
 	student := Student{
 		Name:     name,
 		Email:    email,
@@ -52,6 +69,7 @@ func (r *StudentRepository) CreateStudent(name, email string, age int, password 
 		Password: string(hashedPassword),
 	}
 
+	// データベースに保存
 	result := r.db.Create(&student)
 	if result.Error != nil {
 		return 0, fmt.Errorf("failed to create student: %w", result.Error)
@@ -60,6 +78,7 @@ func (r *StudentRepository) CreateStudent(name, email string, age int, password 
 	return int64(student.ID), nil
 }
 
+// 指定されたIDの学生を取得する
 func (r *StudentRepository) GetStudentByID(id int64) (*domain.Student, error) {
 	var student Student
 	result := r.db.First(&student, id)
@@ -70,6 +89,7 @@ func (r *StudentRepository) GetStudentByID(id int64) (*domain.Student, error) {
 		return nil, fmt.Errorf("query error: %w", result.Error)
 	}
 
+	// データベースモデルをドメインモデルに変換
 	return &domain.Student{
 		ID:        int64(student.ID),
 		Name:      student.Name,
@@ -80,6 +100,7 @@ func (r *StudentRepository) GetStudentByID(id int64) (*domain.Student, error) {
 	}, nil
 }
 
+// 指定されたメールアドレスの学生を取得する
 func (r *StudentRepository) GetStudentByEmail(email string) (*domain.Student, error) {
 	var student Student
 	result := r.db.Where("email = ?", email).First(&student)
@@ -87,6 +108,7 @@ func (r *StudentRepository) GetStudentByEmail(email string) (*domain.Student, er
 		return nil, result.Error
 	}
 
+	// データベースモデルをドメインモデルに変換
 	return &domain.Student{
 		ID:        int64(student.ID),
 		Name:      student.Name,
@@ -98,6 +120,8 @@ func (r *StudentRepository) GetStudentByEmail(email string) (*domain.Student, er
 	}, nil
 }
 
+// 学生のログイン認証を行う
+// メールアドレスとパスワードを検証し、有効な場合はJWTトークンを返す
 func (r *StudentRepository) LoginStudent(email, password string) (string, error) {
 	var student Student
 	result := r.db.Where("email = ?", email).First(&student)
@@ -108,10 +132,12 @@ func (r *StudentRepository) LoginStudent(email, password string) (string, error)
 		return "", fmt.Errorf("query error: %w", result.Error)
 	}
 
+	// パスワードを検証
 	if err := bcrypt.CompareHashAndPassword([]byte(student.Password), []byte(password)); err != nil {
 		return "", fmt.Errorf("invalid credentials")
 	}
 
+	// JWTトークンを生成
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"sub":   student.ID,
 		"email": student.Email,
@@ -120,6 +146,7 @@ func (r *StudentRepository) LoginStudent(email, password string) (string, error)
 		"iat":   time.Now().Unix(),
 	})
 
+	// トークンに署名
 	tokenString, err := token.SignedString([]byte(r.cfg.JWT.Secret))
 	if err != nil {
 		return "", fmt.Errorf("failed to generate JWT: %w", err)

@@ -16,17 +16,20 @@ import (
 	"github.com/go-playground/validator/v10"
 )
 
+// 教師ハンドラー構造体：教師に関するHTTPリクエストを処理
 type TeacherHandler struct {
+	// 教師サービスインターフェース
 	teacherService ports.TeacherService
 }
 
+// 新しい教師ハンドラーインスタンスを作成する
 func NewTeacherHandler(teacherService ports.TeacherService) *TeacherHandler {
 	return &TeacherHandler{
 		teacherService: teacherService,
 	}
 }
 
-// Create handles teacher creation
+// 教師を作成する
 // @Summary Create a new teacher
 // @Description Create a new teacher with the provided information
 // @Tags teachers
@@ -41,6 +44,7 @@ func (h *TeacherHandler) Create() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		slog.Info("creating a teacher")
 
+		// リクエストボディから教師データを取得
 		var teacher domain.Teacher
 		if err := c.ShouldBindJSON(&teacher); err != nil {
 			if errors.Is(err, io.EOF) {
@@ -51,12 +55,14 @@ func (h *TeacherHandler) Create() gin.HandlerFunc {
 			return
 		}
 
+		// バリデーション実行
 		if err := validator.New().Struct(teacher); err != nil {
 			validateErrs := err.(validator.ValidationErrors)
 			c.JSON(http.StatusBadRequest, response.ValidationError(validateErrs))
 			return
 		}
 
+		// 教師を作成
 		createdTeacher, err := h.teacherService.Create(c.Request.Context(), &teacher)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, response.GeneralError(err))
@@ -68,7 +74,7 @@ func (h *TeacherHandler) Create() gin.HandlerFunc {
 	}
 }
 
-// GetByID handles getting a teacher by ID
+// 指定されたIDの教師を取得する
 // @Summary Get a teacher by ID
 // @Description Get a teacher's information by their ID
 // @Tags teachers
@@ -82,6 +88,7 @@ func (h *TeacherHandler) Create() gin.HandlerFunc {
 // @Router /api/v1/teachers/{id} [get]
 func (h *TeacherHandler) GetByID() gin.HandlerFunc {
 	return func(c *gin.Context) {
+		// パスパラメータからIDを取得
 		id, err := strconv.ParseInt(c.Param("id"), 10, 64)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, response.GeneralError(err))
@@ -90,6 +97,7 @@ func (h *TeacherHandler) GetByID() gin.HandlerFunc {
 
 		slog.Info("getting a teacher", slog.String("id", fmt.Sprint(id)))
 
+		// 教師を取得
 		teacher, err := h.teacherService.GetByID(c.Request.Context(), id)
 		if err != nil {
 			slog.Error("error getting teacher", slog.String("id", fmt.Sprint(id)))
@@ -101,7 +109,7 @@ func (h *TeacherHandler) GetByID() gin.HandlerFunc {
 	}
 }
 
-// Update handles updating a teacher
+// 教師情報を更新する
 // @Summary Update a teacher
 // @Description Update a teacher's information
 // @Tags teachers
@@ -116,12 +124,14 @@ func (h *TeacherHandler) GetByID() gin.HandlerFunc {
 // @Router /api/v1/teachers/{id} [put]
 func (h *TeacherHandler) Update() gin.HandlerFunc {
 	return func(c *gin.Context) {
+		// パスパラメータからIDを取得
 		id, err := strconv.ParseInt(c.Param("id"), 10, 64)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, response.GeneralError(err))
 			return
 		}
 
+		// リクエストボディから教師データを取得
 		var teacher domain.Teacher
 		if err := c.ShouldBindJSON(&teacher); err != nil {
 			if errors.Is(err, io.EOF) {
@@ -132,7 +142,9 @@ func (h *TeacherHandler) Update() gin.HandlerFunc {
 			return
 		}
 
+		// IDを設定
 		teacher.ID = id
+		// 教師情報を更新
 		updatedTeacher, err := h.teacherService.Update(c.Request.Context(), &teacher)
 		if err != nil {
 			slog.Error("error updating teacher", slog.String("id", fmt.Sprint(id)))
@@ -144,7 +156,7 @@ func (h *TeacherHandler) Update() gin.HandlerFunc {
 	}
 }
 
-// Delete handles deleting a teacher
+// 指定されたIDの教師を削除する
 // @Summary Delete a teacher
 // @Description Delete a teacher by their ID
 // @Tags teachers
@@ -152,29 +164,31 @@ func (h *TeacherHandler) Update() gin.HandlerFunc {
 // @Produce json
 // @Security BearerAuth
 // @Param id path int true "Teacher ID"
-// @Success 200 {object} response.Response{data=map[string]string{message=string}} "Teacher deleted"
+// @Success 204 "Teacher deleted"
 // @Failure 401 {object} response.Response "Unauthorized"
 // @Failure 404 {object} response.Response "Teacher not found"
 // @Router /api/v1/teachers/{id} [delete]
 func (h *TeacherHandler) Delete() gin.HandlerFunc {
 	return func(c *gin.Context) {
+		// パスパラメータからIDを取得
 		id, err := strconv.ParseInt(c.Param("id"), 10, 64)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, response.GeneralError(err))
 			return
 		}
 
+		// 教師を削除
 		if err := h.teacherService.Delete(c.Request.Context(), id); err != nil {
 			slog.Error("error deleting teacher", slog.String("id", fmt.Sprint(id)))
 			c.JSON(http.StatusNotFound, response.GeneralError(err))
 			return
 		}
 
-		response.Success(c, http.StatusOK, gin.H{"message": "Teacher deleted successfully"})
+		response.Success(c, http.StatusNoContent, nil)
 	}
 }
 
-// Login handles teacher authentication
+// 教師のログイン認証を行う
 // @Summary Login teacher
 // @Description Authenticate a teacher and return a JWT token
 // @Tags teachers
@@ -188,6 +202,7 @@ func (h *TeacherHandler) Login() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		slog.Info("logging in a teacher")
 
+		// リクエストボディからログイン情報を取得
 		var login domain.TeacherLogin
 		if err := c.ShouldBindJSON(&login); err != nil {
 			if errors.Is(err, io.EOF) {
@@ -198,12 +213,14 @@ func (h *TeacherHandler) Login() gin.HandlerFunc {
 			return
 		}
 
+		// バリデーション実行
 		if err := validator.New().Struct(login); err != nil {
 			validateErrs := err.(validator.ValidationErrors)
 			c.JSON(http.StatusBadRequest, response.ValidationError(validateErrs))
 			return
 		}
 
+		// ログイン認証を実行
 		token, err := h.teacherService.Login(c.Request.Context(), login.Email, login.Password)
 		if err != nil {
 			slog.Error("error logging in", slog.String("email", login.Email), slog.String("error", err.Error()))
@@ -216,7 +233,7 @@ func (h *TeacherHandler) Login() gin.HandlerFunc {
 	}
 }
 
-// AssignStudent handles assigning a student to a teacher
+// 教師に学生を割り当てる
 // @Summary Assign student to teacher
 // @Description Assign a student to a teacher
 // @Tags teachers
@@ -231,6 +248,7 @@ func (h *TeacherHandler) Login() gin.HandlerFunc {
 // @Router /api/v1/teachers/{id}/students/{studentId} [post]
 func (h *TeacherHandler) AssignStudent() gin.HandlerFunc {
 	return func(c *gin.Context) {
+		// パスパラメータから教師IDと学生IDを取得
 		teacherID, err := strconv.ParseInt(c.Param("id"), 10, 64)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, response.GeneralError(err))
@@ -243,6 +261,7 @@ func (h *TeacherHandler) AssignStudent() gin.HandlerFunc {
 			return
 		}
 
+		// 学生を教師に割り当て
 		if err := h.teacherService.AssignStudent(c.Request.Context(), teacherID, studentID); err != nil {
 			slog.Error("error assigning student",
 				slog.String("teacherId", fmt.Sprint(teacherID)),
@@ -255,7 +274,7 @@ func (h *TeacherHandler) AssignStudent() gin.HandlerFunc {
 	}
 }
 
-// GetStudents handles getting all students assigned to a teacher
+// 教師に割り当てられた学生一覧を取得する
 // @Summary Get teacher's students
 // @Description Get all students assigned to a teacher
 // @Tags teachers
@@ -269,12 +288,14 @@ func (h *TeacherHandler) AssignStudent() gin.HandlerFunc {
 // @Router /api/v1/teachers/{id}/students [get]
 func (h *TeacherHandler) GetStudents() gin.HandlerFunc {
 	return func(c *gin.Context) {
+		// パスパラメータから教師IDを取得
 		teacherID, err := strconv.ParseInt(c.Param("id"), 10, 64)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, response.GeneralError(err))
 			return
 		}
 
+		// 教師に割り当てられた学生一覧を取得
 		students, err := h.teacherService.GetStudents(c.Request.Context(), teacherID)
 		if err != nil {
 			slog.Error("error getting students", slog.String("teacherId", fmt.Sprint(teacherID)))

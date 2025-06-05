@@ -16,17 +16,20 @@ import (
 	"github.com/go-playground/validator/v10"
 )
 
+// 学生ハンドラー構造体：学生に関するHTTPリクエストを処理
 type StudentHandler struct {
+	// 学生サービスインターフェース
 	studentService ports.StudentService
 }
 
+// 新しい学生ハンドラーインスタンスを作成する
 func NewStudentHandler(studentService ports.StudentService) *StudentHandler {
 	return &StudentHandler{
 		studentService: studentService,
 	}
 }
 
-// Create handles student creation
+// 学生を作成する
 // @Summary Create a new student
 // @Description Create a new student with the provided information
 // @Tags students
@@ -41,6 +44,7 @@ func (h *StudentHandler) Create() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		slog.Info("creating a student")
 
+		// リクエストボディから学生データを取得
 		var student domain.Student
 		if err := c.ShouldBindJSON(&student); err != nil {
 			if errors.Is(err, io.EOF) {
@@ -51,24 +55,26 @@ func (h *StudentHandler) Create() gin.HandlerFunc {
 			return
 		}
 
+		// バリデーション実行
 		if err := validator.New().Struct(student); err != nil {
 			validateErrs := err.(validator.ValidationErrors)
 			c.JSON(http.StatusBadRequest, response.ValidationError(validateErrs))
 			return
 		}
 
+		// 学生を作成
 		createdStudent, err := h.studentService.Create(c.Request.Context(), &student)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, response.GeneralError(err))
 			return
 		}
 
-		slog.Info("user created successfully", slog.String("userId", fmt.Sprint(createdStudent.ID)))
+		slog.Info("student created successfully", slog.String("studentId", fmt.Sprint(createdStudent.ID)))
 		response.Success(c, http.StatusCreated, createdStudent)
 	}
 }
 
-// GetByID handles getting a student by ID
+// 指定されたIDの学生を取得する
 // @Summary Get a student by ID
 // @Description Get a student's information by their ID
 // @Tags students
@@ -82,6 +88,7 @@ func (h *StudentHandler) Create() gin.HandlerFunc {
 // @Router /api/v1/students/{id} [get]
 func (h *StudentHandler) GetByID() gin.HandlerFunc {
 	return func(c *gin.Context) {
+		// パスパラメータからIDを取得
 		id, err := strconv.ParseInt(c.Param("id"), 10, 64)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, response.GeneralError(err))
@@ -90,6 +97,7 @@ func (h *StudentHandler) GetByID() gin.HandlerFunc {
 
 		slog.Info("getting a student", slog.String("id", fmt.Sprint(id)))
 
+		// 学生を取得
 		student, err := h.studentService.GetByID(c.Request.Context(), id)
 		if err != nil {
 			slog.Error("error getting user", slog.String("id", fmt.Sprint(id)))
@@ -101,7 +109,7 @@ func (h *StudentHandler) GetByID() gin.HandlerFunc {
 	}
 }
 
-// Login handles student authentication
+// 学生のログイン認証を行う
 // @Summary Login student
 // @Description Authenticate a student and return a JWT token
 // @Tags students
@@ -115,6 +123,7 @@ func (h *StudentHandler) Login() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		slog.Info("logging in a student")
 
+		// リクエストボディからログイン情報を取得
 		var login domain.StudentLogin
 		if err := c.ShouldBindJSON(&login); err != nil {
 			if errors.Is(err, io.EOF) {
@@ -125,12 +134,14 @@ func (h *StudentHandler) Login() gin.HandlerFunc {
 			return
 		}
 
+		// バリデーション実行
 		if err := validator.New().Struct(login); err != nil {
 			validateErrs := err.(validator.ValidationErrors)
 			c.JSON(http.StatusBadRequest, response.ValidationError(validateErrs))
 			return
 		}
 
+		// ログイン認証を実行
 		token, err := h.studentService.Login(c.Request.Context(), login.Email, login.Password)
 		if err != nil {
 			slog.Error("error logging in", slog.String("email", login.Email), slog.String("error", err.Error()))
@@ -138,7 +149,7 @@ func (h *StudentHandler) Login() gin.HandlerFunc {
 			return
 		}
 
-		slog.Info("user logged in successfully", slog.String("email", login.Email))
+		slog.Info("student logged in successfully", slog.String("email", login.Email))
 		response.Success(c, http.StatusOK, gin.H{"token": token})
 	}
 }

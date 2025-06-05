@@ -12,12 +12,17 @@ A Go-based REST API for managing students and teachers, built with hexagonal arc
 - API documentation with Swagger
 - CORS middleware
 - Dependency Injection with Google Wire
+- Automatic timestamps for records
+- Standardized API responses
+- Input validation
+- Error handling
 
 ## Prerequisites
 
 - Go 1.22 or higher
 - PostgreSQL 12 or higher
 - Docker (optional)
+- Make (for using Makefile commands)
 
 ## Setup
 
@@ -48,29 +53,28 @@ CONFIG_PATH=config/local.yaml
 go mod download
 ```
 
-4. Run database migrations:
+4. Start the database:
 ```bash
-go run cmd/migrate/main.go up
+make docker-up
 ```
 
-5. Run the application:
+5. Build and run the application:
 ```bash
-go run cmd/main.go
+make run
 ```
 
 The server will start at http://localhost:8082 (or the port specified in your config).
 
-## Docker Setup
+## Available Make Commands
 
-1. Build the Docker image:
-```bash
-docker-compose build
-```
-
-2. Start the services:
-```bash
-docker-compose up -d
-```
+- `make build` - Build the application
+- `make run` - Run the application
+- `make test` - Run tests
+- `make docs` - Generate Swagger documentation
+- `make docker-up` - Start Docker containers
+- `make docker-down` - Stop Docker containers
+- `make clean` - Clean build artifacts
+- `make test-with-docker` - Run tests with Docker
 
 ## API Documentation
 
@@ -80,18 +84,18 @@ http://localhost:8082/swagger/index.html
 ## API Endpoints
 
 ### Student Endpoints
-- `POST /students` - Create a new student
-- `GET /students/{id}` - Get a student by ID
-- `POST /students/login` - Login a student
+- `POST /api/v1/students` - Create a new student
+- `GET /api/v1/students/{id}` - Get a student by ID
+- `POST /api/v1/students/login` - Login a student
 
 ### Teacher Endpoints
-- `POST /teachers` - Create a new teacher
-- `GET /teachers/{id}` - Get a teacher by ID
-- `PUT /teachers/{id}` - Update a teacher
-- `DELETE /teachers/{id}` - Delete a teacher
-- `POST /teachers/login` - Login a teacher
-- `POST /teachers/{teacherId}/students/{studentId}` - Assign a student to a teacher
-- `GET /teachers/{teacherId}/students` - Get all students assigned to a teacher
+- `POST /api/v1/teachers` - Create a new teacher
+- `GET /api/v1/teachers/{id}` - Get a teacher by ID
+- `PUT /api/v1/teachers/{id}` - Update a teacher
+- `DELETE /api/v1/teachers/{id}` - Delete a teacher
+- `POST /api/v1/teachers/login` - Login a teacher
+- `POST /api/v1/teachers/{teacherId}/students/{studentId}` - Assign a student to a teacher
+- `GET /api/v1/teachers/{teacherId}/students` - Get all students assigned to a teacher
 
 ## Project Structure
 
@@ -112,7 +116,30 @@ http://localhost:8082/swagger/index.html
 │   └── config/         # Configuration
 ├── migrations/         # Database migrations
 ├── docs/              # Swagger documentation
-└── docker/            # Docker configuration
+├── docker/            # Docker configuration
+└── Makefile          # Build and development commands
+```
+
+## API Response Format
+
+All API responses follow a standard format:
+
+### Success Response
+```json
+{
+  "success": true,
+  "data": {
+    // Response data here
+  }
+}
+```
+
+### Error Response
+```json
+{
+  "status": "Error",
+  "error": "Error message here"
+}
 ```
 
 ## Development
@@ -126,13 +153,13 @@ go run cmd/migrate/main.go create add_new_table
 ### Running Tests
 
 ```bash
-go test ./...
+make test
 ```
 
-### Generating Swagger Documentation
+### Updating Swagger Documentation
 
 ```bash
-swag init -g cmd/main.go
+make docs
 ```
 
 ## Contributing
