@@ -12,9 +12,7 @@ import (
 	"github.com/google/wire"
 )
 
-var dbSet = wire.NewSet(
-	repositories.NewDB,
-)
+var dbSet = wire.NewSet(repositories.NewDB)
 
 var studentRepositorySet = wire.NewSet(
 	repositories.NewStudentRepository,
@@ -24,6 +22,16 @@ var studentRepositorySet = wire.NewSet(
 var teacherRepositorySet = wire.NewSet(
 	repositories.NewTeacherRepository,
 	wire.Bind(new(ports.TeacherRepository), new(*repositories.TeacherRepository)),
+)
+
+var studentServiceSet = wire.NewSet(
+	services.NewStudentService,
+	wire.Bind(new(ports.StudentService), new(*services.StudentService)),
+)
+
+var teacherServiceSet = wire.NewSet(
+	services.NewTeacherService,
+	wire.Bind(new(ports.TeacherService), new(*services.TeacherService)),
 )
 
 type Handlers struct {
@@ -36,8 +44,8 @@ func InitializeHandlers(cfg *config.Config) (*Handlers, error) {
 		dbSet,
 		studentRepositorySet,
 		teacherRepositorySet,
-		services.NewStudentService,
-		services.NewTeacherService,
+		studentServiceSet,
+		teacherServiceSet,
 		http.NewStudentHandler,
 		http.NewTeacherHandler,
 		wire.Struct(new(Handlers), "*"),

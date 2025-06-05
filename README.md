@@ -58,7 +58,7 @@ go run cmd/migrate/main.go up
 go run cmd/main.go
 ```
 
-The server will start at http://localhost:8080 (or the port specified in your config).
+The server will start at http://localhost:8082 (or the port specified in your config).
 
 ## Docker Setup
 
@@ -75,7 +75,7 @@ docker-compose up -d
 ## API Documentation
 
 Once the server is running, you can access the Swagger documentation at:
-http://localhost:8080/swagger/index.html
+http://localhost:8082/swagger/index.html
 
 ## API Endpoints
 

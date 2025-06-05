@@ -1,0 +1,289 @@
+basePath: /api/v1
+definitions:
+  domain.Student:
+    properties:
+      age:
+        type: integer
+      created_at:
+        type: string
+      email:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+      password:
+        type: string
+      updated_at:
+        type: string
+    required:
+    - age
+    - email
+    - name
+    - password
+    type: object
+  domain.StudentLogin:
+    properties:
+      email:
+        type: string
+      password:
+        type: string
+    required:
+    - email
+    - password
+    type: object
+  domain.Teacher:
+    properties:
+      created_at:
+        type: string
+      email:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+      password:
+        type: string
+      students:
+        items:
+          $ref: '#/definitions/domain.Student'
+        type: array
+      subject:
+        type: string
+      updated_at:
+        type: string
+    required:
+    - email
+    - name
+    - password
+    - subject
+    type: object
+  domain.TeacherLogin:
+    properties:
+      email:
+        type: string
+      password:
+        type: string
+    required:
+    - email
+    - password
+    type: object
+host: localhost:8082
+info:
+  contact: {}
+  description: A Go-based REST API for managing students and teachers.
+  title: Student-Teacher Management API
+  version: "1.0"
+paths:
+  /api/v1/students:
+    post:
+      consumes:
+      - application/json
+      description: Create a new student with the provided information
+      parameters:
+      - description: Student information
+        in: body
+        name: student
+        required: true
+        schema:
+          $ref: '#/definitions/domain.Student'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/domain.Student'
+      summary: Create a new student
+      tags:
+      - students
+  /api/v1/students/{id}:
+    get:
+      consumes:
+      - application/json
+      description: Get a student's information by their ID
+      parameters:
+      - description: Student ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/domain.Student'
+      summary: Get a student by ID
+      tags:
+      - students
+  /api/v1/students/login:
+    post:
+      consumes:
+      - application/json
+      description: Authenticate a student and return a JWT token
+      parameters:
+      - description: Login credentials
+        in: body
+        name: credentials
+        required: true
+        schema:
+          $ref: '#/definitions/domain.StudentLogin'
+      produces:
+      - application/json
+      responses: {}
+      summary: Login student
+      tags:
+      - students
+  /api/v1/teachers:
+    post:
+      consumes:
+      - application/json
+      description: Create a new teacher with the provided information
+      parameters:
+      - description: Teacher information
+        in: body
+        name: teacher
+        required: true
+        schema:
+          $ref: '#/definitions/domain.Teacher'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/domain.Teacher'
+      summary: Create a new teacher
+      tags:
+      - teachers
+  /api/v1/teachers/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a teacher by their ID
+      parameters:
+      - description: Teacher ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+      summary: Delete a teacher
+      tags:
+      - teachers
+    get:
+      consumes:
+      - application/json
+      description: Get a teacher's information by their ID
+      parameters:
+      - description: Teacher ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/domain.Teacher'
+      summary: Get a teacher by ID
+      tags:
+      - teachers
+    put:
+      consumes:
+      - application/json
+      description: Update a teacher's information
+      parameters:
+      - description: Teacher ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Teacher information
+        in: body
+        name: teacher
+        required: true
+        schema:
+          $ref: '#/definitions/domain.Teacher'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/domain.Teacher'
+      summary: Update a teacher
+      tags:
+      - teachers
+  /api/v1/teachers/{id}/students:
+    get:
+      consumes:
+      - application/json
+      description: Get all students assigned to a teacher
+      parameters:
+      - description: Teacher ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/domain.Student'
+            type: array
+      summary: Get teacher's students
+      tags:
+      - teachers
+  /api/v1/teachers/{id}/students/{studentId}:
+    post:
+      consumes:
+      - application/json
+      description: Assign a student to a teacher
+      parameters:
+      - description: Teacher ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Student ID
+        in: path
+        name: studentId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses: {}
+      summary: Assign student to teacher
+      tags:
+      - teachers
+  /api/v1/teachers/login:
+    post:
+      consumes:
+      - application/json
+      description: Authenticate a teacher and return a JWT token
+      parameters:
+      - description: Login credentials
+        in: body
+        name: credentials
+        required: true
+        schema:
+          $ref: '#/definitions/domain.TeacherLogin'
+      produces:
+      - application/json
+      responses: {}
+      summary: Login teacher
+      tags:
+      - teachers
+swagger: "2.0"

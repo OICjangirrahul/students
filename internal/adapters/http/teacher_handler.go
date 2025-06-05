@@ -1,7 +1,7 @@
+// Package http provides HTTP handlers for the API
 package http
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -10,223 +10,256 @@ import (
 	"strconv"
 
 	"github.com/OICjangirrahul/students/internal/core/domain"
-	"github.com/OICjangirrahul/students/internal/core/services"
+	"github.com/OICjangirrahul/students/internal/core/ports"
 	"github.com/OICjangirrahul/students/internal/utils/response"
+	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
 )
 
 type TeacherHandler struct {
-	service *services.TeacherService
+	teacherService ports.TeacherService
 }
 
-func NewTeacherHandler(service *services.TeacherService) *TeacherHandler {
+func NewTeacherHandler(teacherService ports.TeacherService) *TeacherHandler {
 	return &TeacherHandler{
-		service: service,
+		teacherService: teacherService,
 	}
 }
 
-func (h *TeacherHandler) Create() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
+// Create handles teacher creation
+// @Summary      Create a new teacher
+// @Description  Create a new teacher with the provided information
+// @Tags         teachers
+// @Accept       json
+// @Produce      json
+// @Param        teacher body domain.Teacher true "Teacher information"
+// @Success      201 {object} domain.Teacher
+// @Router       /api/v1/teachers [post]
+func (h *TeacherHandler) Create() gin.HandlerFunc {
+	return func(c *gin.Context) {
 		slog.Info("creating a teacher")
 
 		var teacher domain.Teacher
-		err := json.NewDecoder(r.Body).Decode(&teacher)
-		if errors.Is(err, io.EOF) {
-			response.WriteJson(w, http.StatusBadRequest, response.GeneralError(fmt.Errorf("empty body")))
-			return
-		}
-
-		if err != nil {
-			response.WriteJson(w, http.StatusBadRequest, response.GeneralError(err))
+		if err := c.ShouldBindJSON(&teacher); err != nil {
+			if errors.Is(err, io.EOF) {
+				c.JSON(http.StatusBadRequest, response.GeneralError(fmt.Errorf("empty body")))
+				return
+			}
+			c.JSON(http.StatusBadRequest, response.GeneralError(err))
 			return
 		}
 
 		if err := validator.New().Struct(teacher); err != nil {
 			validateErrs := err.(validator.ValidationErrors)
-			response.WriteJson(w, http.StatusBadRequest, response.ValidationError(validateErrs))
+			c.JSON(http.StatusBadRequest, response.ValidationError(validateErrs))
 			return
 		}
 
-		lastID, err := h.service.CreateTeacher(teacher)
+		lastID, err := h.teacherService.Create(c.Request.Context(), &teacher)
 		if err != nil {
-			response.WriteJson(w, http.StatusInternalServerError, response.GeneralError(err))
+			c.JSON(http.StatusInternalServerError, response.GeneralError(err))
 			return
 		}
 
 		slog.Info("teacher created successfully", slog.String("teacherId", fmt.Sprint(lastID)))
-		response.WriteJson(w, http.StatusCreated, map[string]int64{"id": lastID})
+		c.JSON(http.StatusCreated, gin.H{"id": lastID})
 	}
 }
 
-func (h *TeacherHandler) GetByID() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		id := r.PathValue("id")
-		slog.Info("getting a teacher", slog.String("id", id))
-
-		intID, err := strconv.ParseInt(id, 10, 64)
+// GetByID handles getting a teacher by ID
+// @Summary      Get a teacher by ID
+// @Description  Get a teacher's information by their ID
+// @Tags         teachers
+// @Accept       json
+// @Produce      json
+// @Param        id path int true "Teacher ID"
+// @Success      200 {object} domain.Teacher
+// @Router       /api/v1/teachers/{id} [get]
+func (h *TeacherHandler) GetByID() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		id, err := strconv.ParseInt(c.Param("id"), 10, 64)
 		if err != nil {
-			response.WriteJson(w, http.StatusBadRequest, response.GeneralError(err))
+			c.JSON(http.StatusBadRequest, response.GeneralError(err))
 			return
 		}
 
-		teacher, err := h.service.GetTeacherByID(intID)
+		teacher, err := h.teacherService.GetByID(c.Request.Context(), id)
 		if err != nil {
-			slog.Error("error getting teacher", slog.String("id", id))
-			response.WriteJson(w, http.StatusInternalServerError, response.GeneralError(err))
+			slog.Error("error getting teacher", slog.String("id", fmt.Sprint(id)))
+			c.JSON(http.StatusNotFound, response.GeneralError(err))
 			return
 		}
 
-		response.WriteJson(w, http.StatusOK, teacher)
+		c.JSON(http.StatusOK, teacher)
 	}
 }
 
-func (h *TeacherHandler) Update() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		id := r.PathValue("id")
-		slog.Info("updating a teacher", slog.String("id", id))
-
-		intID, err := strconv.ParseInt(id, 10, 64)
+// Update handles updating a teacher
+// @Summary      Update a teacher
+// @Description  Update a teacher's information
+// @Tags         teachers
+// @Accept       json
+// @Produce      json
+// @Param        id path int true "Teacher ID"
+// @Param        teacher body domain.Teacher true "Teacher information"
+// @Success      200 {object} domain.Teacher
+// @Router       /api/v1/teachers/{id} [put]
+func (h *TeacherHandler) Update() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		id, err := strconv.ParseInt(c.Param("id"), 10, 64)
 		if err != nil {
-			response.WriteJson(w, http.StatusBadRequest, response.GeneralError(err))
+			c.JSON(http.StatusBadRequest, response.GeneralError(err))
 			return
 		}
 
 		var teacher domain.Teacher
-		err = json.NewDecoder(r.Body).Decode(&teacher)
-		if errors.Is(err, io.EOF) {
-			response.WriteJson(w, http.StatusBadRequest, response.GeneralError(fmt.Errorf("empty body")))
+		if err := c.ShouldBindJSON(&teacher); err != nil {
+			if errors.Is(err, io.EOF) {
+				c.JSON(http.StatusBadRequest, response.GeneralError(fmt.Errorf("empty body")))
+				return
+			}
+			c.JSON(http.StatusBadRequest, response.GeneralError(err))
 			return
 		}
 
+		teacher.ID = id
+		updatedTeacher, err := h.teacherService.Update(c.Request.Context(), &teacher)
 		if err != nil {
-			response.WriteJson(w, http.StatusBadRequest, response.GeneralError(err))
+			slog.Error("error updating teacher", slog.String("id", fmt.Sprint(id)))
+			c.JSON(http.StatusNotFound, response.GeneralError(err))
 			return
 		}
 
-		err = h.service.UpdateTeacher(intID, teacher)
-		if err != nil {
-			slog.Error("error updating teacher", slog.String("id", id))
-			response.WriteJson(w, http.StatusInternalServerError, response.GeneralError(err))
-			return
-		}
-
-		response.WriteJson(w, http.StatusOK, map[string]string{"status": "success"})
+		c.JSON(http.StatusOK, updatedTeacher)
 	}
 }
 
-func (h *TeacherHandler) Delete() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		id := r.PathValue("id")
-		slog.Info("deleting a teacher", slog.String("id", id))
-
-		intID, err := strconv.ParseInt(id, 10, 64)
+// Delete handles deleting a teacher
+// @Summary      Delete a teacher
+// @Description  Delete a teacher by their ID
+// @Tags         teachers
+// @Accept       json
+// @Produce      json
+// @Param        id path int true "Teacher ID"
+// @Success      204 "No Content"
+// @Router       /api/v1/teachers/{id} [delete]
+func (h *TeacherHandler) Delete() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		id, err := strconv.ParseInt(c.Param("id"), 10, 64)
 		if err != nil {
-			response.WriteJson(w, http.StatusBadRequest, response.GeneralError(err))
+			c.JSON(http.StatusBadRequest, response.GeneralError(err))
 			return
 		}
 
-		err = h.service.DeleteTeacher(intID)
-		if err != nil {
-			slog.Error("error deleting teacher", slog.String("id", id))
-			response.WriteJson(w, http.StatusInternalServerError, response.GeneralError(err))
+		if err := h.teacherService.Delete(c.Request.Context(), id); err != nil {
+			slog.Error("error deleting teacher", slog.String("id", fmt.Sprint(id)))
+			c.JSON(http.StatusNotFound, response.GeneralError(err))
 			return
 		}
 
-		response.WriteJson(w, http.StatusOK, map[string]string{"status": "success"})
+		c.JSON(http.StatusNoContent, nil)
 	}
 }
 
-func (h *TeacherHandler) Login() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
+// Login handles teacher authentication
+// @Summary      Login teacher
+// @Description  Authenticate a teacher and return a JWT token
+// @Tags         teachers
+// @Accept       json
+// @Produce      json
+// @Param        credentials body domain.TeacherLogin true "Login credentials"
+// @Router       /api/v1/teachers/login [post]
+func (h *TeacherHandler) Login() gin.HandlerFunc {
+	return func(c *gin.Context) {
 		slog.Info("logging in a teacher")
 
 		var login domain.TeacherLogin
-		err := json.NewDecoder(r.Body).Decode(&login)
-		if errors.Is(err, io.EOF) {
-			response.WriteJson(w, http.StatusBadRequest, response.GeneralError(fmt.Errorf("empty body")))
-			return
-		}
-
-		if err != nil {
-			response.WriteJson(w, http.StatusBadRequest, response.GeneralError(err))
+		if err := c.ShouldBindJSON(&login); err != nil {
+			if errors.Is(err, io.EOF) {
+				c.JSON(http.StatusBadRequest, response.GeneralError(fmt.Errorf("empty body")))
+				return
+			}
+			c.JSON(http.StatusBadRequest, response.GeneralError(err))
 			return
 		}
 
 		if err := validator.New().Struct(login); err != nil {
 			validateErrs := err.(validator.ValidationErrors)
-			response.WriteJson(w, http.StatusBadRequest, response.ValidationError(validateErrs))
+			c.JSON(http.StatusBadRequest, response.ValidationError(validateErrs))
 			return
 		}
 
-		token, err := h.service.LoginTeacher(login)
+		token, err := h.teacherService.Login(c.Request.Context(), login.Email, login.Password)
 		if err != nil {
 			slog.Error("error logging in", slog.String("email", login.Email), slog.String("error", err.Error()))
-			response.WriteJson(w, http.StatusUnauthorized, response.GeneralError(fmt.Errorf("invalid credentials")))
+			c.JSON(http.StatusUnauthorized, response.GeneralError(fmt.Errorf("invalid credentials")))
 			return
 		}
 
 		slog.Info("teacher logged in successfully", slog.String("email", login.Email))
-		response.WriteJson(w, http.StatusOK, map[string]string{"token": token})
+		c.JSON(http.StatusOK, gin.H{"token": token})
 	}
 }
 
-func (h *TeacherHandler) AssignStudent() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		teacherID := r.PathValue("teacherId")
-		studentID := r.PathValue("studentId")
-		slog.Info("assigning student to teacher",
-			slog.String("teacherId", teacherID),
-			slog.String("studentId", studentID),
-		)
-
-		teacherIntID, err := strconv.ParseInt(teacherID, 10, 64)
+// AssignStudent handles assigning a student to a teacher
+// @Summary      Assign student to teacher
+// @Description  Assign a student to a teacher
+// @Tags         teachers
+// @Accept       json
+// @Produce      json
+// @Param        id path int true "Teacher ID"
+// @Param        studentId path int true "Student ID"
+// @Router       /api/v1/teachers/{id}/students/{studentId} [post]
+func (h *TeacherHandler) AssignStudent() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		teacherID, err := strconv.ParseInt(c.Param("id"), 10, 64)
 		if err != nil {
-			response.WriteJson(w, http.StatusBadRequest, response.GeneralError(fmt.Errorf("invalid teacher ID")))
+			c.JSON(http.StatusBadRequest, response.GeneralError(err))
 			return
 		}
 
-		studentIntID, err := strconv.ParseInt(studentID, 10, 64)
+		studentID, err := strconv.ParseInt(c.Param("studentId"), 10, 64)
 		if err != nil {
-			response.WriteJson(w, http.StatusBadRequest, response.GeneralError(fmt.Errorf("invalid student ID")))
+			c.JSON(http.StatusBadRequest, response.GeneralError(err))
 			return
 		}
 
-		err = h.service.AssignStudentToTeacher(teacherIntID, studentIntID)
-		if err != nil {
-			slog.Error("error assigning student to teacher",
-				slog.String("teacherId", teacherID),
-				slog.String("studentId", studentID),
-				slog.String("error", err.Error()),
-			)
-			response.WriteJson(w, http.StatusInternalServerError, response.GeneralError(err))
+		if err := h.teacherService.AssignStudent(c.Request.Context(), teacherID, studentID); err != nil {
+			slog.Error("error assigning student",
+				slog.String("teacherId", fmt.Sprint(teacherID)),
+				slog.String("studentId", fmt.Sprint(studentID)))
+			c.JSON(http.StatusNotFound, response.GeneralError(err))
 			return
 		}
 
-		response.WriteJson(w, http.StatusOK, map[string]string{"status": "success"})
+		c.JSON(http.StatusOK, gin.H{"message": "Student assigned successfully"})
 	}
 }
 
-func (h *TeacherHandler) GetStudents() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		teacherID := r.PathValue("teacherId")
-		slog.Info("getting teacher's students", slog.String("teacherId", teacherID))
-
-		teacherIntID, err := strconv.ParseInt(teacherID, 10, 64)
+// GetStudents handles getting all students assigned to a teacher
+// @Summary      Get teacher's students
+// @Description  Get all students assigned to a teacher
+// @Tags         teachers
+// @Accept       json
+// @Produce      json
+// @Param        id path int true "Teacher ID"
+// @Success      200 {array} domain.Student
+// @Router       /api/v1/teachers/{id}/students [get]
+func (h *TeacherHandler) GetStudents() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		teacherID, err := strconv.ParseInt(c.Param("id"), 10, 64)
 		if err != nil {
-			response.WriteJson(w, http.StatusBadRequest, response.GeneralError(fmt.Errorf("invalid teacher ID")))
+			c.JSON(http.StatusBadRequest, response.GeneralError(err))
 			return
 		}
 
-		students, err := h.service.GetTeacherStudents(teacherIntID)
+		students, err := h.teacherService.GetStudents(c.Request.Context(), teacherID)
 		if err != nil {
-			slog.Error("error getting teacher's students",
-				slog.String("teacherId", teacherID),
-				slog.String("error", err.Error()),
-			)
-			response.WriteJson(w, http.StatusInternalServerError, response.GeneralError(err))
+			slog.Error("error getting students", slog.String("teacherId", fmt.Sprint(teacherID)))
+			c.JSON(http.StatusNotFound, response.GeneralError(err))
 			return
 		}
 
-		response.WriteJson(w, http.StatusOK, students)
+		c.JSON(http.StatusOK, students)
 	}
 }

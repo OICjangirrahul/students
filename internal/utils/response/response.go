@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
 )
 
@@ -37,8 +38,6 @@ func GeneralError(err error) Response {
 	}
 }
 
-
-
 func ValidationError(errs validator.ValidationErrors) Response {
 	var errMsgs []string
 
@@ -52,6 +51,22 @@ func ValidationError(errs validator.ValidationErrors) Response {
 	}
 	return Response{
 		Status: StatusError,
-		Error: strings.Join(errMsgs, ","),
+		Error:  strings.Join(errMsgs, ","),
 	}
+}
+
+// Success sends a successful response with data
+func Success(c *gin.Context, code int, data interface{}) {
+	c.JSON(code, gin.H{
+		"success": true,
+		"data":    data,
+	})
+}
+
+// Error sends an error response with message
+func Error(c *gin.Context, code int, message string) {
+	c.JSON(code, gin.H{
+		"success": false,
+		"error":   message,
+	})
 }

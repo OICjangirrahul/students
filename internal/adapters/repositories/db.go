@@ -8,8 +8,6 @@ import (
 	"gorm.io/gorm"
 )
 
-
-
 func NewDB(cfg *config.Config) (*gorm.DB, error) {
 	dsn := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
 		cfg.DB.Host,
@@ -24,10 +22,14 @@ func NewDB(cfg *config.Config) (*gorm.DB, error) {
 		return nil, fmt.Errorf("failed to connect to database: %w", err)
 	}
 
-	// Auto-migrate the schema
-	err = db.AutoMigrate(&StudentModel{}, &TeacherModel{})
+	// Verify connection
+	sqlDB, err := db.DB()
 	if err != nil {
-		return nil, fmt.Errorf("failed to migrate database: %w", err)
+		return nil, fmt.Errorf("failed to get database instance: %w", err)
+	}
+
+	if err := sqlDB.Ping(); err != nil {
+		return nil, fmt.Errorf("failed to ping database: %w", err)
 	}
 
 	return db, nil

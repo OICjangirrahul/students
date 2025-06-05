@@ -1,84 +1,83 @@
+// Package main provides the entry point for the Student-Teacher Management API
 package main
 
 import (
-	"context"
 	"log/slog"
-	"net/http"
 	"os"
-	"os/signal"
-	"syscall"
-	"time"
 
+	_ "github.com/OICjangirrahul/students/docs" // Import swagger docs
 	"github.com/OICjangirrahul/students/internal"
 	"github.com/OICjangirrahul/students/internal/config"
+	"github.com/OICjangirrahul/students/internal/middleware"
+	"github.com/gin-gonic/gin"
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 )
 
-func main() {
-	cfg := config.MustLoad()
+// @title           Student-Teacher Management API
+// @version         1.0
+// @description     A Go-based REST API for managing students and teachers.
+// @host            localhost:8082
+// @BasePath        /api/v1
 
-	handlers, err := internal.InitializeHandlers(cfg)
+func main() {
+	// Load configuration
+	cfg, err := config.LoadConfig("config/local.yaml")
+	if err != nil {
+		slog.Error("failed to load configuration", slog.String("error", err.Error()))
+		os.Exit(1)
+	}
+
+	// Initialize handlers
+	handlers, err := internal.InitializeAppHandlers(cfg)
 	if err != nil {
 		slog.Error("failed to initialize handlers", slog.String("error", err.Error()))
 		os.Exit(1)
 	}
 
-	mux := http.NewServeMux()
+	// Initialize Gin router
+	r := gin.Default()
 
-	// Student routes
-	mux.HandleFunc("POST /students", handlers.Student.Create())
-	mux.HandleFunc("GET /students/{id}", handlers.Student.GetByID())
-	mux.HandleFunc("POST /students/login", handlers.Student.Login())
+	// Add CORS middleware
+	r.Use(middleware.CorsMiddleware())
+
+	// API v1 group
+	v1 := r.Group("/api/v1")
 
 	// Teacher routes
-	mux.HandleFunc("POST /teachers", handlers.Teacher.Create())
-	mux.HandleFunc("GET /teachers/{id}", handlers.Teacher.GetByID())
-	mux.HandleFunc("PUT /teachers/{id}", handlers.Teacher.Update())
-	mux.HandleFunc("DELETE /teachers/{id}", handlers.Teacher.Delete())
-	mux.HandleFunc("POST /teachers/login", handlers.Teacher.Login())
-	mux.HandleFunc("POST /teachers/{teacherId}/students/{studentId}", handlers.Teacher.AssignStudent())
-	mux.HandleFunc("GET /teachers/{teacherId}/students", handlers.Teacher.GetStudents())
+	teachers := v1.Group("/teachers")
+	{
+		teachers.POST("", handlers.Teacher.Create())
+		teachers.POST("/login", handlers.Teacher.Login())
 
-	srv := &http.Server{
-		Addr:    cfg.HTTPServer.Addr,
-		Handler: mux,
+		teacherManagement := teachers.Group("/:id")
+		{
+			teacherManagement.GET("", handlers.Teacher.GetByID())
+			teacherManagement.PUT("", handlers.Teacher.Update())
+			teacherManagement.DELETE("", handlers.Teacher.Delete())
+
+			studentManagement := teacherManagement.Group("/students")
+			{
+				studentManagement.GET("", handlers.Teacher.GetStudents())
+				studentManagement.POST("/:studentId", handlers.Teacher.AssignStudent())
+			}
+		}
 	}
 
-	// Server run context
-	serverCtx, serverStopCtx := context.WithCancel(context.Background())
+	// Student routes
+	students := v1.Group("/students")
+	{
+		students.POST("", handlers.Student.Create())
+		students.POST("/login", handlers.Student.Login())
+		students.GET("/:id", handlers.Student.GetByID())
+	}
 
-	// Listen for syscall signals for process to interrupt/quit
-	sig := make(chan os.Signal, 1)
-	signal.Notify(sig, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
-	go func() {
-		<-sig
+	// Swagger documentation
+	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
-		// Shutdown signal with grace period of 30 seconds
-		shutdownCtx, _ := context.WithTimeout(serverCtx, 30*time.Second)
-
-		go func() {
-			<-shutdownCtx.Done()
-			if shutdownCtx.Err() == context.DeadlineExceeded {
-				slog.Error("graceful shutdown timed out.. forcing exit.")
-				os.Exit(1)
-			}
-		}()
-
-		// Trigger graceful shutdown
-		err := srv.Shutdown(shutdownCtx)
-		if err != nil {
-			slog.Error("server shutdown error", slog.String("error", err.Error()))
-		}
-		serverStopCtx()
-	}()
-
-	// Run the server
-	slog.Info("starting server", slog.String("addr", cfg.HTTPServer.Addr))
-	err = srv.ListenAndServe()
-	if err != nil && err != http.ErrServerClosed {
-		slog.Error("server error", slog.String("error", err.Error()))
+	// Start server
+	if err := r.Run(cfg.HTTPServer.Addr); err != nil {
+		slog.Error("failed to start server", slog.String("error", err.Error()))
 		os.Exit(1)
 	}
-
-	// Wait for server context to be stopped
-	<-serverCtx.Done()
 }
